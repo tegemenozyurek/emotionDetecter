@@ -72,6 +72,20 @@ A VGG-style CNN in [`src/model.py`](src/model.py) — **4.8M parameters (~19 MB)
 
 Trains on the Apple Silicon GPU (MPS) when available, falling back to CUDA or CPU.
 
+## Training
+
+```bash
+python scripts/train.py            # ~40 min on an Apple M4 (MPS)
+```
+
+AdamW (lr 1e-3, weight decay 1e-4), class-weighted cross-entropy, batch 128, 40 epochs. The learning rate is halved when validation accuracy plateaus, and the best checkpoint is kept.
+
+**Baseline: 64.9% validation accuracy** (epoch 36) — already around human-level on FER-2013 (~65%).
+
+![Training curves](assets/training_curves.png)
+
+The gap between the curves is classic **overfitting**: training accuracy keeps climbing to 87% while validation stalls around 64% and validation loss rises after epoch ~22. The model is starting to memorize the training faces — step 8 tackles this with data augmentation.
+
 ## Roadmap
 
 - [x] 1. Project skeleton
@@ -79,7 +93,7 @@ Trains on the Apple Silicon GPU (MPS) when available, falling back to CUDA or CP
 - [x] 3. Explore the data
 - [x] 4. Preprocessing
 - [x] 5. CNN model
-- [ ] 6. Training
+- [x] 6. Training
 - [ ] 7. Evaluation
 - [ ] 8. Improvements (augmentation, tuning)
 - [ ] 9. Live webcam demo
