@@ -21,9 +21,10 @@ models/<version>/   model.pt · config.json · history.csv · train_log.txt · t
 assets/<version>/   training_curves.png · confusion_matrix.png · predictions.png
 ```
 
-| version | what changed | val acc | test acc |
-|---|---|---:|---:|
-| `eD0.1` | baseline CNN, 40 epochs, no augmentation | 64.9% | 65.8% |
+| version | what changed | val acc | test acc | test acc, distorted faces |
+|---|---|---:|---:|---:|
+| `eD0.1` | baseline CNN, 40 epochs, no augmentation | 64.9% | 65.8% | 56.1% |
+| `eD0.5` | + data augmentation, 60 epochs | 64.6% | 65.8% | **63.0%** |
 
 ## Setup
 
@@ -136,6 +137,29 @@ python scripts/evaluate.py --model eD0.1 --no-tta
 
 Some "mistakes" are arguably label noise — FER-2013 is known to have mislabeled images.
 
+## Improvement: data augmentation (`eD0.5`)
+
+`eD0.1` memorized its training set (87% train vs 64% val). For `eD0.5`, every training batch is randomly distorted on the GPU ([`src/augment.py`](src/augment.py)): mirrored, rotated ±10°, shifted ±10%, zoomed ±10%, and a random patch is erased. The model never sees the exact same image twice.
+
+```bash
+python scripts/preview_augmentation.py
+python scripts/train.py --name eD0.5 --augment --epochs 60 --patience 5   # ~55 min
+python scripts/evaluate.py --model eD0.5 --no-tta
+python scripts/robustness.py
+```
+
+![Augmentation](assets/augmentation.png)
+
+Overfitting is gone. Train and validation accuracy now move together, and the best epoch was the last one, so the model was still improving when training stopped:
+
+![eD0.5 training curves](assets/eD0.5/training_curves.png)
+
+On the clean test set both versions score **65.8%**. The difference shows up when the test faces are tilted, off-centre or partly covered, which is how faces look in real photos and webcam frames. There `eD0.1` drops by up to 10 points and `eD0.5` stays close to its clean accuracy:
+
+![Robustness](assets/robustness.png)
+
+`eD0.5` is the default model in the app.
+
 ## Roadmap
 
 - [x] 1. Project skeleton
@@ -145,6 +169,6 @@ Some "mistakes" are arguably label noise — FER-2013 is known to have mislabele
 - [x] 5. CNN model
 - [x] 6. Training
 - [x] 7. Evaluation
-- [ ] 8. Improvements (augmentation, tuning)
-- [ ] 9. Live webcam demo
+- [x] 8. Improvements (augmentation, tuning)
+- [x] 9. Live webcam demo
 - [ ] 10. Polish & results
