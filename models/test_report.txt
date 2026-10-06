@@ -1,0 +1,18 @@
+Test accuracy: 65.8%  (4,721 / 7,178 correct)
+
+emotion   precision  recall     f1  support
+angry         58.1%   58.7%  58.4%      958
+disgust       71.3%   69.4%  70.3%      111
+fear          54.7%   37.8%  44.7%     1024
+happy         86.4%   83.0%  84.7%     1774
+neutral       58.1%   66.7%  62.1%     1233
+sad           51.2%   58.5%  54.6%     1247
+surprise      78.7%   80.5%  79.6%      831
+macro avg     65.5%   65.0%  64.9%     7178
+
+Most common mistakes (true -> predicted):
+  fear      -> sad        253  (25% of fear)
+  sad       -> neutral    236  (19% of sad)
+  neutral   -> sad        206  (17% of neutral)
+  angry     -> sad        159  (17% of angry)
+  fear      -> angry      132  (13% of fear)

@@ -86,6 +86,35 @@ AdamW (lr 1e-3, weight decay 1e-4), class-weighted cross-entropy, batch 128, 40 
 
 The gap between the curves is classic **overfitting**: training accuracy keeps climbing to 87% while validation stalls around 64% and validation loss rises after epoch ~22. The model is starting to memorize the training faces — step 8 tackles this with data augmentation.
 
+## Evaluation
+
+```bash
+python scripts/evaluate.py
+```
+
+On the held-out **test set (7,178 images): 65.8% accuracy**, macro F1 64.9%.
+
+| emotion | precision | recall | F1 |
+|---|---:|---:|---:|
+| angry | 58.1% | 58.7% | 58.4% |
+| disgust | 71.3% | 69.4% | 70.3% |
+| fear | 54.7% | 37.8% | 44.7% |
+| happy | 86.4% | 83.0% | 84.7% |
+| neutral | 58.1% | 66.7% | 62.1% |
+| sad | 51.2% | 58.5% | 54.6% |
+| surprise | 78.7% | 80.5% | 79.6% |
+
+![Confusion matrix](assets/confusion_matrix.png)
+
+- **Happy** and **surprise** are easy — a smile and an open mouth are strong, unambiguous signals.
+- **Fear** is the hardest: only 38% recall, often mistaken for *sad* (25%) or *angry* (13%).
+- **Sad** is the model's "catch-all" for low-energy negative faces — fear, neutral and angry all leak into it.
+- Class weighting paid off for **disgust**: 69% recall despite only 436 training images.
+
+![Predictions](assets/predictions.png)
+
+Some "mistakes" are arguably label noise — FER-2013 is known to have mislabeled images.
+
 ## Roadmap
 
 - [x] 1. Project skeleton
@@ -94,7 +123,7 @@ The gap between the curves is classic **overfitting**: training accuracy keeps c
 - [x] 4. Preprocessing
 - [x] 5. CNN model
 - [x] 6. Training
-- [ ] 7. Evaluation
+- [x] 7. Evaluation
 - [ ] 8. Improvements (augmentation, tuning)
 - [ ] 9. Live webcam demo
 - [ ] 10. Polish & results
