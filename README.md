@@ -4,6 +4,14 @@ Facial emotion recognition trained on the [FER-2013](https://www.kaggle.com/data
 
 > 🚧 Work in progress — built step by step.
 
+## Try it
+
+```bash
+python app.py        # then open http://127.0.0.1:7860
+```
+
+A Gradio web app ([`app.py`](app.py)): upload a photo, paste one, or use your webcam. Faces are found with OpenCV's Haar cascade, each one is cropped to 48×48 and classified, and the result is drawn on the image with a probability chart for every emotion. The **Live webcam** tab updates in real time.
+
 ## Setup
 
 ```bash

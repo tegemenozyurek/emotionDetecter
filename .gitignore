@@ -23,3 +23,6 @@ access_token
 .vscode/
 .idea/
 .ipynb_checkpoints/
+
+# Local tooling
+.claude/

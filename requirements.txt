@@ -4,3 +4,5 @@ numpy
 matplotlib
 pillow
 torch
+gradio
+opencv-python-headless<5
