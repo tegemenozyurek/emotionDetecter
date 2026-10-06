@@ -1,10 +1,17 @@
 """Step 7: Evaluate the trained model on the held-out TEST set (first time we touch it).
 
+Usage:
+  python scripts/evaluate.py --model eD0.5
+
 Prints overall accuracy plus precision / recall / F1 for each emotion, and saves:
-  assets/confusion_matrix.png   — which emotions get confused with which
-  assets/predictions.png        — random test faces with true vs predicted label
-  models/test_report.txt        — the printed report
+  assets/<model>/confusion_matrix.png   — which emotions get confused with which
+  assets/<model>/predictions.png        — random test faces with true vs predicted label
+  models/<model>/test_report.txt        — the printed report
+
+Test-time augmentation (averaging with the mirrored face) is on by default,
+the same as in the app; pass --no-tta to turn it off.
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -28,11 +35,15 @@ SEQUENTIAL = LinearSegmentedColormap.from_list("blue", ["#f3f7fd", "#2a78d6", "#
 
 
 @torch.no_grad()
-def predict(model, X, device, batch_size=512):
+def predict(model, X, device, batch_size=512, tta=False):
+    """Class probabilities. With tta, also look at the mirrored face and average."""
     probs = []
     for start in range(0, len(X), batch_size):
         xb = torch.from_numpy(X[start:start + batch_size]).unsqueeze(1).to(device)
-        probs.append(torch.softmax(model(xb), dim=1).cpu().numpy())
+        p = torch.softmax(model(xb), dim=1)
+        if tta:
+            p = (p + torch.softmax(model(torch.flip(xb, dims=[3])), dim=1)) / 2
+        probs.append(p.cpu().numpy())
     return np.concatenate(probs)
 
 
@@ -64,7 +75,7 @@ def build_report(cm, emotions):
     return "\n".join(lines)
 
 
-def plot_confusion(cm, emotions):
+def plot_confusion(cm, emotions, out_path):
     norm = cm / cm.sum(axis=1, keepdims=True)
     fig, ax = plt.subplots(figsize=(7.5, 6.5), facecolor=SURFACE)
     im = ax.imshow(norm, cmap=SEQUENTIAL, vmin=0, vmax=1)
@@ -84,11 +95,11 @@ def plot_confusion(cm, emotions):
     cbar.outline.set_visible(False)
     cbar.ax.tick_params(colors=TEXT_MUTED, length=0)
     fig.tight_layout()
-    fig.savefig(ASSETS / "confusion_matrix.png", dpi=150)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
-def plot_predictions(X, y, probs, emotions, mean, std, n=24, seed=7):
+def plot_predictions(X, y, probs, emotions, mean, std, out_path, n=24, seed=7):
     rng = np.random.default_rng(seed)
     idx = rng.choice(len(X), n, replace=False)
     cols = 8
@@ -103,30 +114,40 @@ def plot_predictions(X, y, probs, emotions, mean, std, n=24, seed=7):
     fig.suptitle("Test predictions (✓ correct, ✗ wrong — predicted label, confidence, true label)",
                  x=0.01, ha="left", fontsize=12, color=TEXT)
     fig.tight_layout()
-    fig.savefig(ASSETS / "predictions.png", dpi=150)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", required=True, help="model version, e.g. eD0.5 -> models/eD0.5/model.pt")
+    parser.add_argument("--no-tta", dest="tta", action="store_false", help="disable test-time augmentation")
+    args = parser.parse_args()
+    model_dir = MODELS / args.model
+    plot_dir = ASSETS / args.model
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
     data = np.load(DATA)
     emotions = [str(e) for e in data["emotions"]]
     X_test, y_test = data["X_test"], data["y_test"]
 
     device = get_device()
     model = EmotionCNN().to(device)
-    model.load_state_dict(torch.load(MODELS / "best.pt", map_location=device))
+    model.load_state_dict(torch.load(model_dir / "model.pt", map_location=device))
     model.eval()
 
-    probs = predict(model, X_test, device)
+    probs = predict(model, X_test, device, tta=args.tta)
     cm = confusion_matrix(y_test, probs.argmax(1), len(emotions))
 
-    report = build_report(cm, emotions)
+    report = f"Model: {args.model} | TTA: {args.tta}\n" + build_report(cm, emotions)
     print(report)
-    (MODELS / "test_report.txt").write_text(report + "\n")
+    (model_dir / "test_report.txt").write_text(report + "\n")
 
-    plot_confusion(cm, emotions)
-    plot_predictions(X_test, y_test, probs, emotions, float(data["mean"]), float(data["std"]))
-    print("\nSaved assets/confusion_matrix.png, assets/predictions.png, models/test_report.txt")
+    plot_confusion(cm, emotions, plot_dir / "confusion_matrix.png")
+    plot_predictions(X_test, y_test, probs, emotions, float(data["mean"]), float(data["std"]),
+                     plot_dir / "predictions.png")
+    print(f"\nSaved {plot_dir.relative_to(ROOT)}/confusion_matrix.png, {plot_dir.relative_to(ROOT)}/predictions.png, "
+          f"{model_dir.relative_to(ROOT)}/test_report.txt")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,20 @@ Facial emotion recognition trained on the [FER-2013](https://www.kaggle.com/data
 python app.py        # then open http://127.0.0.1:7860
 ```
 
-A Gradio web app ([`app.py`](app.py)): upload a photo, paste one, or use your webcam. Faces are found with OpenCV's Haar cascade, each one is cropped to 48×48 and classified, and the result is drawn on the image with a probability chart for every emotion. The **Live webcam** tab updates in real time.
+A Gradio web app ([`app.py`](app.py)): pick a model version, then upload a photo, paste one, or use your webcam. Faces are found with OpenCV's Haar cascade, each one is cropped to 48×48 and classified, and the result is drawn on the image with a probability chart for every emotion. The **Live webcam** tab updates in real time.
+
+## Models
+
+Every trained version lives in its own folder with its weights, settings, logs and test report:
+
+```
+models/<version>/   model.pt · config.json · history.csv · train_log.txt · test_report.txt
+assets/<version>/   training_curves.png · confusion_matrix.png · predictions.png
+```
+
+| version | what changed | val acc | test acc |
+|---|---|---:|---:|
+| `eD0.1` | baseline CNN, 40 epochs, no augmentation | 64.9% | 65.8% |
 
 ## Setup
 
@@ -83,24 +96,24 @@ Trains on the Apple Silicon GPU (MPS) when available, falling back to CUDA or CP
 ## Training
 
 ```bash
-python scripts/train.py            # ~40 min on an Apple M4 (MPS)
+python scripts/train.py --name eD0.1      # ~40 min on an Apple M4 (MPS)
 ```
 
 AdamW (lr 1e-3, weight decay 1e-4), class-weighted cross-entropy, batch 128, 40 epochs. The learning rate is halved when validation accuracy plateaus, and the best checkpoint is kept.
 
-**Baseline: 64.9% validation accuracy** (epoch 36) — already around human-level on FER-2013 (~65%).
+**Baseline model `eD0.1`: 64.9% validation accuracy** (epoch 36) — already around human-level on FER-2013 (~65%).
 
-![Training curves](assets/training_curves.png)
+![Training curves](assets/eD0.1/training_curves.png)
 
 The gap between the curves is classic **overfitting**: training accuracy keeps climbing to 87% while validation stalls around 64% and validation loss rises after epoch ~22. The model is starting to memorize the training faces — step 8 tackles this with data augmentation.
 
 ## Evaluation
 
 ```bash
-python scripts/evaluate.py
+python scripts/evaluate.py --model eD0.1 --no-tta
 ```
 
-On the held-out **test set (7,178 images): 65.8% accuracy**, macro F1 64.9%.
+`eD0.1` on the held-out **test set (7,178 images): 65.8% accuracy**, macro F1 64.9%.
 
 | emotion | precision | recall | F1 |
 |---|---:|---:|---:|
@@ -112,14 +125,14 @@ On the held-out **test set (7,178 images): 65.8% accuracy**, macro F1 64.9%.
 | sad | 51.2% | 58.5% | 54.6% |
 | surprise | 78.7% | 80.5% | 79.6% |
 
-![Confusion matrix](assets/confusion_matrix.png)
+![Confusion matrix](assets/eD0.1/confusion_matrix.png)
 
 - **Happy** and **surprise** are easy — a smile and an open mouth are strong, unambiguous signals.
 - **Fear** is the hardest: only 38% recall, often mistaken for *sad* (25%) or *angry* (13%).
 - **Sad** is the model's "catch-all" for low-energy negative faces — fear, neutral and angry all leak into it.
 - Class weighting paid off for **disgust**: 69% recall despite only 436 training images.
 
-![Predictions](assets/predictions.png)
+![Predictions](assets/eD0.1/predictions.png)
 
 Some "mistakes" are arguably label noise — FER-2013 is known to have mislabeled images.
 

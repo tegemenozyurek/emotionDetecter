@@ -31,20 +31,22 @@ class Face:
         return float(self.probs.max())
 
 
-def default_checkpoint():
-    """Prefer the augmented model from step 8, fall back to the step-6 baseline."""
-    for name in ("best_aug.pt", "best.pt"):
-        if (ROOT / "models" / name).exists():
-            return ROOT / "models" / name
-    raise FileNotFoundError("No trained model in models/ — run scripts/train.py first.")
+def available_models():
+    """Model versions that have trained weights, e.g. ['eD0.1', 'eD0.5'] (oldest first)."""
+    versions = [d.name for d in (ROOT / "models").iterdir() if (d / "model.pt").exists()]
+    return sorted(versions, key=lambda v: [int(n) if n.isdigit() else n for n in v.lstrip("eD").split(".")])
 
 
 class EmotionPredictor:
-    def __init__(self, checkpoint=None, device="cpu"):
-        self.checkpoint = Path(checkpoint or default_checkpoint())
+    def __init__(self, version=None, device="cpu"):
+        versions = available_models()
+        if not versions:
+            raise FileNotFoundError("No trained model in models/ — run scripts/train.py first.")
+        self.version = version or versions[-1]  # newest by default
         self.device = torch.device(device)
         self.model = EmotionCNN().to(self.device)
-        self.model.load_state_dict(torch.load(self.checkpoint, map_location=self.device))
+        weights = ROOT / "models" / self.version / "model.pt"
+        self.model.load_state_dict(torch.load(weights, map_location=self.device))
         self.model.eval()
         self.detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 

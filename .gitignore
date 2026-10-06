@@ -26,3 +26,6 @@ access_token
 
 # Local tooling
 .claude/
+
+# Trained model weights ARE committed (one per version) so the app runs after cloning
+!models/*/model.pt
