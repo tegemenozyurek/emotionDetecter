@@ -31,6 +31,13 @@ class Face:
         return float(self.probs.max())
 
 
+def _overlap(a, b):
+    """Intersection area divided by the area of the smaller box (0 = apart, 1 = nested)."""
+    ix = max(0, min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0]))
+    iy = max(0, min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1]))
+    return ix * iy / min(a[2] * a[3], b[2] * b[3])
+
+
 def available_models():
     """Model versions that have trained weights, e.g. ['eD0.1', 'eD0.5'] (oldest first)."""
     versions = [d.name for d in (ROOT / "models").iterdir() if (d / "model.pt").exists()]
@@ -50,9 +57,21 @@ class EmotionPredictor:
         self.model.eval()
         self.detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-    def detect(self, gray):
-        boxes = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
-        return [tuple(int(v) for v in b) for b in boxes]
+    def detect(self, gray, min_relative_size=0.4, max_overlap=0.2):
+        """Find faces, then drop the Haar cascade's typical false positives:
+        boxes much smaller than the biggest face (an ear, a fist, a pattern
+        in the background) and boxes that overlap a bigger face."""
+        min_side = max(40, int(min(gray.shape) * 0.08))
+        boxes = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=6, minSize=(min_side, min_side))
+        boxes = sorted((tuple(int(v) for v in b) for b in boxes), key=lambda b: b[2] * b[3], reverse=True)
+        kept = []
+        for box in boxes:
+            if kept and box[2] < min_relative_size * kept[0][2]:
+                continue
+            if any(_overlap(box, k) > max_overlap for k in kept):
+                continue
+            kept.append(box)
+        return kept
 
     @torch.no_grad()
     def classify(self, crops):
@@ -86,8 +105,10 @@ class EmotionPredictor:
             label = f"{f.emotion} {f.confidence:.0%}"
             font_scale = 0.7 * scale
             (tw, th), base = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thick)
-            ty = max(y, th + base + 6)
-            cv2.rectangle(out, (x, ty - th - base - 6), (x + tw + 8, ty), BOX_COLOR, -1)
-            cv2.putText(out, label, (x + 4, ty - base - 3), cv2.FONT_HERSHEY_SIMPLEX,
+            label_h = th + base + 6
+            # Label sits above the box; if there's no room, put it inside the box's top edge.
+            top = y - label_h if y >= label_h else y
+            cv2.rectangle(out, (x, top), (x + tw + 8, top + label_h), BOX_COLOR, -1)
+            cv2.putText(out, label, (x + 4, top + th + 3), cv2.FONT_HERSHEY_SIMPLEX,
                         font_scale, (255, 255, 255), thick, cv2.LINE_AA)
         return out
