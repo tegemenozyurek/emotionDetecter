@@ -31,7 +31,7 @@ The images land in `data/fer2013/{train,test}/<emotion>/`.
 ## Roadmap
 
 - [x] 1. Project skeleton
-- [ ] 2. Download dataset
+- [x] 2. Download dataset
 - [ ] 3. Explore the data
 - [ ] 4. Preprocessing
 - [ ] 5. CNN model
