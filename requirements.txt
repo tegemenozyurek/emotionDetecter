@@ -1,2 +1,5 @@
 kagglehub>=1.0
 kagglesdk
+numpy
+matplotlib
+pillow

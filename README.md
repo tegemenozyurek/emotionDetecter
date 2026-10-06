@@ -28,11 +28,29 @@ The dataset is **not** included in this repo. To download it:
 
 The images land in `data/fer2013/{train,test}/<emotion>/`.
 
+## Data at a glance
+
+```bash
+python scripts/explore_data.py
+```
+
+35,887 face images (48×48 grayscale) across 7 emotions. The classes are **heavily imbalanced** — `happy` has ~16× more training images than `disgust`:
+
+![Class distribution](assets/class_distribution.png)
+
+Random samples from each class:
+
+![Sample faces](assets/sample_faces.png)
+
+Averaging every training image per emotion already reveals the signal a model has to learn — the open mouth of *surprise*, the smile of *happy*:
+
+![Average faces](assets/average_faces.png)
+
 ## Roadmap
 
 - [x] 1. Project skeleton
 - [x] 2. Download dataset
-- [ ] 3. Explore the data
+- [x] 3. Explore the data
 - [ ] 4. Preprocessing
 - [ ] 5. CNN model
 - [ ] 6. Training
