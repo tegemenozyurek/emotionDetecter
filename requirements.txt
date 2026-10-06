@@ -3,3 +3,4 @@ kagglesdk
 numpy
 matplotlib
 pillow
+torch

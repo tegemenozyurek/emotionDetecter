@@ -58,13 +58,27 @@ python scripts/preprocess.py
 
 ![Pixel distribution](assets/preprocessing.png)
 
+## Model
+
+```bash
+python scripts/model_summary.py
+```
+
+A VGG-style CNN in [`src/model.py`](src/model.py) — **4.8M parameters (~19 MB)**. Each block is `conv3×3 → BatchNorm → ReLU` ×2 → `MaxPool` → `Dropout`, doubling channels while halving resolution:
+
+```
+1×48×48 → 64×24×24 → 128×12×12 → 256×6×6 → 512×3×3 → global avg pool → 256 → 7
+```
+
+Trains on the Apple Silicon GPU (MPS) when available, falling back to CUDA or CPU.
+
 ## Roadmap
 
 - [x] 1. Project skeleton
 - [x] 2. Download dataset
 - [x] 3. Explore the data
 - [x] 4. Preprocessing
-- [ ] 5. CNN model
+- [x] 5. CNN model
 - [ ] 6. Training
 - [ ] 7. Evaluation
 - [ ] 8. Improvements (augmentation, tuning)
