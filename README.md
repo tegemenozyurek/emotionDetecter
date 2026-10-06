@@ -46,12 +46,24 @@ Averaging every training image per emotion already reveals the signal a model ha
 
 ![Average faces](assets/average_faces.png)
 
+## Preprocessing
+
+```bash
+python scripts/preprocess.py
+```
+
+- **Split:** 10% of the training set is held out as a stratified *validation* set → train 25,837 / val 2,872 / test 7,178. The test set is not touched until final evaluation.
+- **Normalize:** pixels are scaled to 0–1, then standardized with the *training* mean/std (0.508 / 0.255) so no information leaks from val/test.
+- **Class weights:** inverse-frequency weights counter the imbalance — `disgust` gets 9.4×, `happy` 0.57×.
+
+![Pixel distribution](assets/preprocessing.png)
+
 ## Roadmap
 
 - [x] 1. Project skeleton
 - [x] 2. Download dataset
 - [x] 3. Explore the data
-- [ ] 4. Preprocessing
+- [x] 4. Preprocessing
 - [ ] 5. CNN model
 - [ ] 6. Training
 - [ ] 7. Evaluation
