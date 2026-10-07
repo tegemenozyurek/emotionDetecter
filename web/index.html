@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>emotionDetecter · live</title>
+<meta name="description" content="Real-time facial emotion recognition that runs entirely in your browser. Video never leaves your device.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😄</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>emotion<span>Detecter</span></h1>
+    <p>Live facial emotion recognition · runs entirely in your browser</p>
+  </div>
+  <a class="gh" href="https://github.com/tegemenozyurek/emotionDetecter" target="_blank" rel="noopener">GitHub ↗</a>
+</header>
+
+<main class="layout">
+  <section class="stage card">
+    <div class="toolbar">
+      <div class="models" id="models" role="radiogroup" aria-label="Model"></div>
+      <span class="stats" id="stats">loading…</span>
+    </div>
+
+    <div class="viewport" id="viewport">
+      <video id="video" playsinline muted></video>
+      <canvas id="still" hidden></canvas>
+      <canvas id="overlay"></canvas>
+      <div class="empty" id="empty">
+        <div class="empty-icon">🙂</div>
+        <p>Turn on your camera or drop a photo here.</p>
+        <p class="muted">Everything runs on this device. No image or video is uploaded.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="camera" class="btn primary" disabled>Start camera</button>
+      <label class="btn" for="file">Upload photo</label>
+      <input type="file" id="file" accept="image/*" hidden>
+      <span class="spacer"></span>
+      <label class="switch"><input type="checkbox" id="smooth" checked><span></span>Smoothing</label>
+      <label class="switch"><input type="checkbox" id="showCrops"><span></span>Model input</label>
+    </div>
+  </section>
+
+  <aside class="panel card">
+    <div class="verdict" id="verdict">
+      <div class="verdict-emoji">·</div>
+      <div>
+        <div class="verdict-label">No face yet</div>
+        <div class="verdict-sub">Waiting for a camera or a photo</div>
+      </div>
+    </div>
+    <ul class="bars" id="bars"></ul>
+    <div class="crops" id="crops" hidden>
+      <div class="crops-title">What the model sees</div>
+      <div class="crops-row" id="cropsRow"></div>
+    </div>
+  </aside>
+</main>
+
+<section class="about" id="about">
+  <h2>How it works</h2>
+  <ol class="pipeline">
+    <li><b>Detect</b><span>MediaPipe finds faces, eyes, nose and mouth</span></li>
+    <li><b>Align</b><span>each face is rotated and scaled onto one template</span></li>
+    <li><b>Classify</b><span>a CNN trained from scratch scores 7 emotions</span></li>
+    <li><b>Smooth</b><span>faces are tracked and their scores averaged over time</span></li>
+  </ol>
+
+  <h2>Models</h2>
+  <div class="model-cards" id="modelCards"></div>
+  <div class="charts" id="charts"></div>
+</section>
+
+<footer>
+  Models trained from scratch on FER+ and RAF-DB ·
+  <a href="https://github.com/tegemenozyurek/emotionDetecter" target="_blank" rel="noopener">source &amp; results</a>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

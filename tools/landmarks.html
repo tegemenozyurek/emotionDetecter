@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Face keypoints for training data</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 32px; background: #0f172a; color: #e2e8f0; }
+  code { color: #a5b4fc; }
+</style>
+</head>
+<body>
+<h2>Face keypoints for training data</h2>
+<p>Runs MediaPipe's face detector (the same one the live webcam app uses) on every training image
+and sends eyes / nose / mouth positions back to <code>tools/landmark_server.py</code>.</p>
+<p id="status">Loading MediaPipe…</p>
+
+<script type="module">
+import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/vision_bundle.mjs";
+
+const status = document.getElementById("status");
+const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm");
+const detector = await FaceDetector.createFromOptions(vision, {
+  baseOptions: {
+    modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+    delegate: "GPU",
+  },
+  runningMode: "IMAGE",
+  minDetectionConfidence: 0.3,
+});
+const canvas = document.createElement("canvas");
+const ctx = canvas.getContext("2d");
+status.textContent = "Ready.";
+
+// Upscale small images and pad them with gray: the detector is trained on
+// selfie-like frames where the face does not touch the image border.
+async function detect(path, { scale, pad }) {
+  const img = await createImageBitmap(await (await fetch("/" + path)).blob());
+  const w = img.width * scale, h = img.height * scale;
+  const p = Math.round(pad * Math.max(w, h));
+  canvas.width = Math.round(w + 2 * p);
+  canvas.height = Math.round(h + 2 * p);
+  ctx.fillStyle = "rgb(128,128,128)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, p, p, w, h);
+  const result = detector.detect(canvas);
+  if (!result.detections.length) return { path, ok: false };
+  const best = result.detections.reduce((a, b) => (a.categories[0].score >= b.categories[0].score ? a : b));
+  const toImg = (x, y) => [(x - p) / scale, (y - p) / scale];  // canvas px -> original image px
+  const bb = best.boundingBox;
+  const [bx, by] = toImg(bb.originX, bb.originY);
+  return {
+    path, ok: true,
+    score: +best.categories[0].score.toFixed(4),
+    box: [bx, by, bb.width / scale, bb.height / scale].map(v => +v.toFixed(2)),
+    kp: best.keypoints.map(k => toImg(k.x * canvas.width, k.y * canvas.height).map(v => +v.toFixed(2))),
+  };
+}
+
+// Try a few scale/padding settings on a sample and report detection rates.
+window.trySettings = async (paths, settings) => {
+  const out = [];
+  for (const s of settings) {
+    let ok = 0;
+    for (const path of paths) ok += (await detect(path, s)).ok ? 1 : 0;
+    out.push({ ...s, rate: +(ok / paths.length).toFixed(3) });
+  }
+  return out;
+};
+
+// Full run over the manifest; results are POSTed to the server in batches.
+window.progress = { done: 0, ok: 0, total: 0, running: false };
+window.runAll = async (settingsByPrefix) => {
+  const paths = await (await fetch("/manifest.json")).json();
+  Object.assign(window.progress, { done: 0, ok: 0, total: paths.length, running: true, started: Date.now() });
+  let batch = [];
+  for (const path of paths) {
+    const prefix = Object.keys(settingsByPrefix).find(k => path.startsWith(k));
+    const row = await detect(path, settingsByPrefix[prefix]);
+    batch.push(row);
+    window.progress.done++;
+    window.progress.ok += row.ok ? 1 : 0;
+    if (batch.length === 500) {
+      await fetch("/results", { method: "POST", body: JSON.stringify(batch) });
+      batch = [];
+      status.textContent = `${window.progress.done} / ${paths.length} images, ${window.progress.ok} faces found`;
+    }
+  }
+  if (batch.length) await fetch("/results", { method: "POST", body: JSON.stringify(batch) });
+  window.progress.running = false;
+  status.textContent = `Done: ${window.progress.done} images, ${window.progress.ok} faces found`;
+  return window.progress;
+};
+</script>
+</body>
+</html>

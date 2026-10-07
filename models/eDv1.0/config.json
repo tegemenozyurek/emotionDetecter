@@ -1,0 +1,38 @@
+{
+  "name": "eDv1.0",
+  "arch": "resnet",
+  "width": 64,
+  "epochs": 60,
+  "batch_size": 128,
+  "lr": 0.002,
+  "weight_decay": 0.05,
+  "warmup": 3,
+  "ema": 0.999,
+  "teachers": "_teachers/T1,_teachers/T2,eD0.7",
+  "alpha": 0.5,
+  "temperature": 2.0,
+  "seed": 42,
+  "input": "aligned64",
+  "size": 64,
+  "template": "canonical",
+  "mean": 0.5082763433456421,
+  "std": 0.2411266565322876,
+  "data": "v1",
+  "teachers_used": [
+    {
+      "name": "_teachers/T1",
+      "val_acc": 0.8612903356552124,
+      "weight": 0.5
+    },
+    {
+      "name": "_teachers/T2",
+      "val_acc": 0.8575268983840942,
+      "weight": 0.5
+    },
+    {
+      "name": "eD0.7",
+      "val_acc": 0.7462365627288818,
+      "weight": 0.0
+    }
+  ]
+}

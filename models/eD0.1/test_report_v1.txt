@@ -1,0 +1,21 @@
+Model: eD0.1 | no TTA | each model on its own framing (FER 48x48)
+FER+ test   (6,323 faces): accuracy 66.8%, macro F1 58.3%
+RAF-DB test (3,068 faces): accuracy 60.4%, macro F1 39.4%
+
+Simulated webcam (FER+ + RAF-DB test):
+  clean            64.7%
+  dim light        61.1%
+  motion blur      47.3%
+  low resolution   40.8%
+  sensor noise     52.6%
+  detector jitter  62.4%
+  all combined     27.8%
+
+Recall per emotion (both test sets):
+  angry     65.8%
+  disgust   12.9%
+  fear      47.9%
+  happy     83.0%
+  neutral   52.9%
+  sad       62.3%
+  surprise  62.3%

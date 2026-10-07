@@ -1,0 +1,177 @@
+{
+  "emotions": [
+    "angry",
+    "disgust",
+    "fear",
+    "happy",
+    "neutral",
+    "sad",
+    "surprise"
+  ],
+  "emoji": [
+    "😠",
+    "🤢",
+    "😨",
+    "😄",
+    "😐",
+    "😢",
+    "😮"
+  ],
+  "default": "eDv1.0",
+  "models": [
+    {
+      "version": "eD0.7",
+      "file": "models/eD0.7.onnx",
+      "size": 48,
+      "template": [
+        [
+          14.93,
+          19.13
+        ],
+        [
+          32.66,
+          18.83
+        ],
+        [
+          23.99,
+          28.73
+        ],
+        [
+          24.11,
+          37.32
+        ]
+      ],
+      "mean": 0.50785,
+      "std": 0.255,
+      "tagline": "Clean labels",
+      "changes": [
+        "+ FER+ labels: 10 people voted on every image",
+        "Same recipe as eD0.5",
+        "Ambiguous & non-face images removed"
+      ],
+      "train_images": 22447,
+      "dataset": "FER+",
+      "test_ferplus": 0.8009999999999999,
+      "test_rafdb": 0.629,
+      "webcam": 0.314
+    },
+    {
+      "version": "eDv1.0",
+      "file": "models/eDv1.0.onnx",
+      "size": 64,
+      "template": [
+        [
+          17.894,
+          21.421
+        ],
+        [
+          44.998,
+          21.024
+        ],
+        [
+          31.482,
+          35.565
+        ],
+        [
+          31.77,
+          49.158
+        ]
+      ],
+      "mean": 0.5082763433456421,
+      "std": 0.2411266565322876,
+      "tagline": "Video-ready",
+      "changes": [
+        "+ RAF-DB: 15k real-world faces",
+        "+ aligned faces (same detector as the live app)",
+        "+ webcam-style augmentation",
+        "Learned from 2 teacher models + eD0.7"
+      ],
+      "train_images": 36960,
+      "dataset": "FER+ + RAF-DB",
+      "test_ferplus": 0.892,
+      "test_rafdb": 0.8490000000000001,
+      "webcam": 0.6729999999999999
+    }
+  ],
+  "about": [
+    {
+      "version": "eD0.1",
+      "tagline": "Baseline",
+      "changes": [
+        "VGG-style CNN trained from scratch",
+        "Original FER-2013 labels",
+        "No augmentation · 40 epochs"
+      ],
+      "train_images": 25837,
+      "dataset": "FER-2013",
+      "train_time": "39 min",
+      "test_ferplus": 0.6679999999999999,
+      "test_rafdb": 0.604,
+      "webcam": 0.278,
+      "live": false
+    },
+    {
+      "version": "eD0.5",
+      "tagline": "Augmented",
+      "changes": [
+        "+ flip / rotate / shift / zoom / erase augmentation",
+        "Stays accurate on tilted & covered faces",
+        "Original FER-2013 labels · 60 epochs"
+      ],
+      "train_images": 25837,
+      "dataset": "FER-2013",
+      "train_time": "53 min",
+      "test_ferplus": 0.7340000000000001,
+      "test_rafdb": 0.62,
+      "webcam": 0.314,
+      "live": false
+    },
+    {
+      "version": "eD0.7",
+      "tagline": "Clean labels",
+      "changes": [
+        "+ FER+ labels: 10 people voted on every image",
+        "Same recipe as eD0.5",
+        "Ambiguous & non-face images removed"
+      ],
+      "train_images": 22447,
+      "dataset": "FER+",
+      "train_time": "40 min",
+      "test_ferplus": 0.8009999999999999,
+      "test_rafdb": 0.629,
+      "webcam": 0.314,
+      "live": true
+    },
+    {
+      "version": "eDv1.0",
+      "tagline": "Video-ready",
+      "changes": [
+        "+ RAF-DB: 15k real-world faces",
+        "+ aligned faces (same detector as the live app)",
+        "+ webcam-style augmentation",
+        "Learned from 2 teacher models + eD0.7"
+      ],
+      "train_images": 36960,
+      "dataset": "FER+ + RAF-DB",
+      "train_time": "1 h 57 min",
+      "test_ferplus": 0.892,
+      "test_rafdb": 0.8490000000000001,
+      "webcam": 0.6729999999999999,
+      "live": true
+    }
+  ],
+  "charts": [
+    {
+      "file": "assets/benchmark.png",
+      "caption": "Accuracy on FER+, RAF-DB and a simulated webcam"
+    },
+    {
+      "file": "assets/webcam_conditions.png",
+      "caption": "Simulated webcam: accuracy per condition"
+    },
+    {
+      "file": "assets/alignment.png",
+      "caption": "Every face is aligned the same way in training and live"
+    }
+  ]
+}

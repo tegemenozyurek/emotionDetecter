@@ -6,3 +6,5 @@ pillow
 torch
 gradio
 opencv-python-headless<5
+onnx
+onnxruntime
