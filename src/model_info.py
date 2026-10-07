@@ -13,22 +13,30 @@ MODELS = ROOT / "models"
 DESCRIPTIONS = {
     "eD0.1": {
         "tagline": "Baseline",
-        "changes": ["VGG-style CNN trained from scratch", "Original FER-2013 labels", "No augmentation · 40 epochs"],
+        "summary": "The first model: a small CNN trained on raw FER-2013.",
+        "changes": ["VGG-style CNN trained from scratch", "Original FER-2013 labels",
+                    "No augmentation, so it memorizes training faces"],
     },
     "eD0.5": {
         "tagline": "Augmented",
-        "changes": ["+ flip / rotate / shift / zoom / erase augmentation",
-                    "Stays accurate on tilted & covered faces", "Original FER-2013 labels · 60 epochs"],
+        "summary": "Same network and data, but every training face is randomly distorted.",
+        "changes": ["Random flip, rotation, shift, zoom and erased patches",
+                    "No more memorizing: train and validation stay close",
+                    "Much steadier on tilted or partly covered faces"],
     },
     "eD0.7": {
         "tagline": "Clean labels",
-        "changes": ["+ FER+ labels: 10 people voted on every image",
-                    "Same recipe as eD0.5", "Ambiguous & non-face images removed"],
+        "summary": "Same recipe as eD0.5, trained on corrected labels.",
+        "changes": ["FER+ labels: 10 people voted on every image",
+                    "A third of the original labels were wrong",
+                    "Faces nobody agreed on were removed"],
     },
     "eDv1.0": {
         "tagline": "Video-ready",
-        "changes": ["+ RAF-DB: 15k real-world faces", "+ aligned faces (same detector as the live app)",
-                    "+ webcam-style augmentation", "Learned from 2 teacher models + eD0.7"],
+        "summary": "Built for the live webcam: more data, aligned faces, learned from two teacher models.",
+        "changes": ["Adds RAF-DB: 15k real-world faces", "Faces aligned with the same detector as this app",
+                    "Trained on simulated webcam blur, noise and dim light",
+                    "Distilled from two larger teacher networks"],
     },
 }
 
@@ -42,6 +50,7 @@ DATASETS = {"fer2013": "FER-2013", "ferplus": "FER+", "v1": "FER+ + RAF-DB"}
 class ModelInfo:
     version: str
     tagline: str = ""
+    summary: str = ""
     changes: list = field(default_factory=list)
     config: dict = field(default_factory=dict)
     history: list = field(default_factory=list)  # [(epoch, train_acc, val_acc)]
@@ -117,7 +126,7 @@ def _robustness():
 def load(version):
     folder = MODELS / version
     desc = DESCRIPTIONS.get(version, {"tagline": "", "changes": []})
-    info = ModelInfo(version, desc["tagline"], desc["changes"])
+    info = ModelInfo(version, tagline=desc["tagline"], summary=desc.get("summary", ""), changes=desc["changes"])
     if (folder / "config.json").exists():
         info.config = json.loads((folder / "config.json").read_text())
     if (folder / "train_log.txt").exists():

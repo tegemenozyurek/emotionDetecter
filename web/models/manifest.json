@@ -44,13 +44,15 @@
       "mean": 0.50785,
       "std": 0.255,
       "tagline": "Baseline",
+      "summary": "The first model: a small CNN trained on raw FER-2013.",
       "changes": [
         "VGG-style CNN trained from scratch",
         "Original FER-2013 labels",
-        "No augmentation · 40 epochs"
+        "No augmentation, so it memorizes training faces"
       ],
       "train_images": 25837,
       "dataset": "FER-2013",
+      "train_time": "39 min",
       "test_ferplus": 0.6679999999999999,
       "test_rafdb": 0.604,
       "webcam": 0.278
@@ -80,13 +82,15 @@
       "mean": 0.50785,
       "std": 0.255,
       "tagline": "Augmented",
+      "summary": "Same network and data, but every training face is randomly distorted.",
       "changes": [
-        "+ flip / rotate / shift / zoom / erase augmentation",
-        "Stays accurate on tilted & covered faces",
-        "Original FER-2013 labels · 60 epochs"
+        "Random flip, rotation, shift, zoom and erased patches",
+        "No more memorizing: train and validation stay close",
+        "Much steadier on tilted or partly covered faces"
       ],
       "train_images": 25837,
       "dataset": "FER-2013",
+      "train_time": "53 min",
       "test_ferplus": 0.7340000000000001,
       "test_rafdb": 0.62,
       "webcam": 0.314
@@ -116,13 +120,15 @@
       "mean": 0.50785,
       "std": 0.255,
       "tagline": "Clean labels",
+      "summary": "Same recipe as eD0.5, trained on corrected labels.",
       "changes": [
-        "+ FER+ labels: 10 people voted on every image",
-        "Same recipe as eD0.5",
-        "Ambiguous & non-face images removed"
+        "FER+ labels: 10 people voted on every image",
+        "A third of the original labels were wrong",
+        "Faces nobody agreed on were removed"
       ],
       "train_images": 22447,
       "dataset": "FER+",
+      "train_time": "40 min",
       "test_ferplus": 0.8009999999999999,
       "test_rafdb": 0.629,
       "webcam": 0.314
@@ -152,14 +158,16 @@
       "mean": 0.5082763433456421,
       "std": 0.2411266565322876,
       "tagline": "Video-ready",
+      "summary": "Built for the live webcam: more data, aligned faces, learned from two teacher models.",
       "changes": [
-        "+ RAF-DB: 15k real-world faces",
-        "+ aligned faces (same detector as the live app)",
-        "+ webcam-style augmentation",
-        "Learned from 2 teacher models + eD0.7"
+        "Adds RAF-DB: 15k real-world faces",
+        "Faces aligned with the same detector as this app",
+        "Trained on simulated webcam blur, noise and dim light",
+        "Distilled from two larger teacher networks"
       ],
       "train_images": 36960,
       "dataset": "FER+ + RAF-DB",
+      "train_time": "1 h 57 min",
       "test_ferplus": 0.892,
       "test_rafdb": 0.8490000000000001,
       "webcam": 0.6729999999999999
@@ -169,10 +177,11 @@
     {
       "version": "eD0.1",
       "tagline": "Baseline",
+      "summary": "The first model: a small CNN trained on raw FER-2013.",
       "changes": [
         "VGG-style CNN trained from scratch",
         "Original FER-2013 labels",
-        "No augmentation · 40 epochs"
+        "No augmentation, so it memorizes training faces"
       ],
       "train_images": 25837,
       "dataset": "FER-2013",
@@ -185,10 +194,11 @@
     {
       "version": "eD0.5",
       "tagline": "Augmented",
+      "summary": "Same network and data, but every training face is randomly distorted.",
       "changes": [
-        "+ flip / rotate / shift / zoom / erase augmentation",
-        "Stays accurate on tilted & covered faces",
-        "Original FER-2013 labels · 60 epochs"
+        "Random flip, rotation, shift, zoom and erased patches",
+        "No more memorizing: train and validation stay close",
+        "Much steadier on tilted or partly covered faces"
       ],
       "train_images": 25837,
       "dataset": "FER-2013",
@@ -201,10 +211,11 @@
     {
       "version": "eD0.7",
       "tagline": "Clean labels",
+      "summary": "Same recipe as eD0.5, trained on corrected labels.",
       "changes": [
-        "+ FER+ labels: 10 people voted on every image",
-        "Same recipe as eD0.5",
-        "Ambiguous & non-face images removed"
+        "FER+ labels: 10 people voted on every image",
+        "A third of the original labels were wrong",
+        "Faces nobody agreed on were removed"
       ],
       "train_images": 22447,
       "dataset": "FER+",
@@ -217,11 +228,12 @@
     {
       "version": "eDv1.0",
       "tagline": "Video-ready",
+      "summary": "Built for the live webcam: more data, aligned faces, learned from two teacher models.",
       "changes": [
-        "+ RAF-DB: 15k real-world faces",
-        "+ aligned faces (same detector as the live app)",
-        "+ webcam-style augmentation",
-        "Learned from 2 teacher models + eD0.7"
+        "Adds RAF-DB: 15k real-world faces",
+        "Faces aligned with the same detector as this app",
+        "Trained on simulated webcam blur, noise and dim light",
+        "Distilled from two larger teacher networks"
       ],
       "train_images": 36960,
       "dataset": "FER+ + RAF-DB",

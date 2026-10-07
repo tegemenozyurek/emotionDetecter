@@ -394,11 +394,7 @@ function buildModelChips() {
     chip.setAttribute("role", "radio");
     chip.dataset.version = m.version;
     chip.textContent = m.version;
-    const tip = [`${m.version} · ${m.tagline}`, ...m.changes, ""];
-    if (m.train_images) tip.push(`Trained on ${m.train_images.toLocaleString("en")} images (${m.dataset})`);
-    if (m.test_ferplus) tip.push(`FER+ test accuracy: ${(m.test_ferplus * 100).toFixed(1)}%`);
-    if (m.test_rafdb) tip.push(`RAF-DB test accuracy: ${(m.test_rafdb * 100).toFixed(1)}%`);
-    chip.dataset.tip = tip.join("\n").trim();
+    chip.dataset.model = m.version;
     chip.addEventListener("click", () => selectModel(m.version));
     ui.models.append(chip);
   }
@@ -471,6 +467,49 @@ ui.viewport.addEventListener("drop", (e) => {
 });
 window.addEventListener("resize", () => state.mode === "photo" && runPhoto());
 
+// ---------------------------------------------------------------- model tooltip
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+function modelTooltipHtml(m) {
+  const stat = (label, value) => (value ? `<div><b>${value}</b><span>${label}</span></div>` : "");
+  const pctOrNull = (x) => (x == null ? null : `${(x * 100).toFixed(1)}%`);
+  return `<div class="tip-head"><span class="tip-name">${esc(m.version)}</span><span class="tip-tag">${esc(m.tagline)}</span></div>` +
+    (m.summary ? `<p class="tip-summary">${esc(m.summary)}</p>` : "") +
+    `<ul class="tip-list">${m.changes.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` +
+    `<div class="tip-stats">` +
+    stat("FER+ test", pctOrNull(m.test_ferplus)) + stat("RAF-DB test", pctOrNull(m.test_rafdb)) +
+    stat("webcam sim", pctOrNull(m.webcam)) +
+    stat("train images", m.train_images ? m.train_images.toLocaleString("en") : null) +
+    stat("training time", m.train_time) +
+    `</div>`;
+}
+
+const tipEl = document.createElement("div");
+tipEl.className = "model-tip";
+document.body.append(tipEl);
+
+function showTip(target) {
+  const info = state.manifest?.about.find((m) => m.version === target.dataset.model);
+  if (!info) return;
+  tipEl.innerHTML = modelTooltipHtml(info);
+  tipEl.classList.add("show");
+  const r = target.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  const left = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
+  const top = r.bottom + 10 + h < window.innerHeight ? r.bottom + 10 : Math.max(12, r.top - h - 10);
+  tipEl.style.left = `${left}px`;
+  tipEl.style.top = `${top}px`;
+}
+
+document.addEventListener("mouseover", (e) => {
+  const target = e.target.closest("[data-model]");
+  if (target) showTip(target);
+});
+document.addEventListener("mouseout", (e) => {
+  const from = e.target.closest("[data-model]");
+  if (from && !from.contains(e.relatedTarget)) tipEl.classList.remove("show");
+});
+
 // ---------------------------------------------------------------- about the models
 
 const pct = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`);
@@ -480,9 +519,7 @@ function renderAbout() {
   for (const m of state.manifest.about) {
     const card = document.createElement("div");
     card.className = "mcard";
-    const tip = [`${m.version} · ${m.tagline}`, ...m.changes];
-    if (m.train_time) tip.push("", `Training time: ${m.train_time} on an Apple M4 GPU`);
-    card.dataset.tip = tip.join("\n");
+    card.dataset.model = m.version;
     card.innerHTML = `<div class="mcard-head"><span class="mcard-name">${m.version}</span>` +
       (m.version === state.manifest.default ? `<span class="badge">default</span>` : "") + `</div>` +
       `<div class="mcard-metrics">` +

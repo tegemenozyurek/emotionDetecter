@@ -66,8 +66,9 @@ def main():
         info = model_info.load(v)
         entries.append({
             "version": v, "file": f"models/{v}.onnx", **spec,
-            "tagline": info.tagline, "changes": info.changes,
+            "tagline": info.tagline, "summary": info.summary, "changes": info.changes,
             "train_images": info.train_images, "dataset": info.dataset,
+            "train_time": info.train_time if info.train_seconds else None,
             "test_ferplus": info.test_ferplus, "test_rafdb": info.test_rafdb, "webcam": info.webcam,
         })
         print(f"{v:<8} -> {path.relative_to(ROOT)} ({path.stat().st_size / 1e6:.1f} MB), "
@@ -77,7 +78,7 @@ def main():
     about = []
     for v in available_models():
         info = model_info.load(v)
-        about.append({"version": v, "tagline": info.tagline, "changes": info.changes,
+        about.append({"version": v, "tagline": info.tagline, "summary": info.summary, "changes": info.changes,
                       "train_images": info.train_images, "dataset": info.dataset,
                       "train_time": info.train_time if info.train_seconds else None,
                       "test_ferplus": info.test_ferplus, "test_rafdb": info.test_rafdb, "webcam": info.webcam,

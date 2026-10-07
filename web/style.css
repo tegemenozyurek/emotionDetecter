@@ -55,13 +55,6 @@ a { color: inherit; }
 .chip:hover { color: var(--text); }
 .chip[aria-checked="true"] { color: #fff; border-color: transparent;
   background: linear-gradient(90deg, #7c3aed, #4f46e5); }
-.chip[data-tip]:hover::after {
-  content: attr(data-tip); position: absolute; top: calc(100% + 10px); left: 0; z-index: 20;
-  width: max-content; max-width: 300px; white-space: pre-line; text-align: left;
-  font: 400 12.5px/1.55 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #f8fafc; background: #0f172a; border: 1px solid rgb(148 163 184 / .25);
-  padding: 10px 12px; border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .35); pointer-events: none;
-}
 
 .viewport { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #05070f;
   aspect-ratio: 4 / 3; max-height: 72vh; display: grid; place-items: center; }
@@ -138,13 +131,6 @@ a { color: inherit; }
 .mcard-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 8px; margin-top: 14px; }
 .mcard-metrics b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .mcard-metrics span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.mcard[data-tip]:hover::after {
-  content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
-  width: max-content; max-width: 300px; white-space: pre-line;
-  font: 400 12.5px/1.55 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #f8fafc; background: #0f172a; border: 1px solid rgb(148 163 184 / .25);
-  padding: 10px 12px; border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .35); pointer-events: none;
-}
 .charts { display: grid; gap: 14px; margin-top: 14px; }
 .charts figure { margin: 0; background: #fcfcfb; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
 .charts img { display: block; width: 100%; height: auto; }
@@ -152,3 +138,23 @@ a { color: inherit; }
 
 footer .note { max-width: 640px; margin: 10px auto 0; font-size: 12px; line-height: 1.6; opacity: .85; }
 footer { color: var(--muted); font-size: 13px; padding: 22px 0 32px; text-align: center; }
+
+/* model tooltip (a card that follows the hovered model name) */
+.model-tip { position: fixed; z-index: 50; width: 320px; padding: 14px 16px; border-radius: 14px;
+  background: #0f172a; color: #e2e8f0; border: 1px solid rgb(148 163 184 / .22);
+  box-shadow: 0 18px 40px rgb(0 0 0 / .4); pointer-events: none;
+  opacity: 0; transform: translateY(-4px); transition: opacity .12s, transform .12s; }
+.model-tip.show { opacity: 1; transform: none; }
+.tip-head { display: flex; align-items: center; gap: 8px; }
+.tip-name { font: 700 15px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #fff; }
+.tip-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+  background: linear-gradient(90deg, rgb(124 58 237 / .35), rgb(79 70 229 / .35)); color: #ddd6fe; }
+.tip-summary { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: #cbd5e1; }
+.tip-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.tip-list li { position: relative; padding-left: 16px; font-size: 12.5px; line-height: 1.45; color: #94a3b8; }
+.tip-list li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 5px; height: 5px;
+  border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #06b6d4); }
+.tip-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid rgb(148 163 184 / .18); }
+.tip-stats b { display: block; font-size: 14px; color: #f8fafc; font-variant-numeric: tabular-nums; }
+.tip-stats span { font-size: 10.5px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
