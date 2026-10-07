@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>emotionDetecter · live</title>
 <meta name="description" content="Real-time facial emotion recognition that runs entirely in your browser. Video never leaves your device.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😄</text></svg>">
-<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="top">
@@ -62,8 +62,8 @@
 </main>
 
 <section class="about" id="about">
-  <details class="how">
-  <summary><h2>How it works</h2></summary>
+  <details class="fold">
+  <summary><span>How it works</span><span class="chev" aria-hidden="true">›</span></summary>
   <ol class="pipeline">
     <li><b>Detect</b><span>MediaPipe finds faces, eyes, nose and mouth</span></li>
     <li><b>Align</b><span>each face is rotated and scaled onto one template</span></li>
@@ -72,9 +72,11 @@
   </ol>
   </details>
 
-  <h2>Models</h2>
+  <details class="fold">
+  <summary><span>Models</span><span class="chev" aria-hidden="true">›</span></summary>
   <div class="model-cards" id="modelCards"></div>
   <div class="charts" id="charts"></div>
+  </details>
 </section>
 
 <footer>
@@ -82,6 +84,6 @@
   <a href="https://github.com/tegemenozyurek/emotionDetecter" target="_blank" rel="noopener">source &amp; results</a>
 </footer>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=4"></script>
 </body>
 </html>
