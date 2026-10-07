@@ -158,3 +158,49 @@ footer { color: var(--muted); font-size: 13px; padding: 22px 0 32px; text-align:
   padding-top: 12px; border-top: 1px solid rgb(148 163 184 / .18); }
 .tip-stats b { display: block; font-size: 14px; color: #f8fafc; font-variant-numeric: tabular-nums; }
 .tip-stats span { font-size: 10.5px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+
+/* games */
+.games { width: min(1120px, 100% - 32px); margin: 36px auto 0; }
+.games-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.games-head h2 { font-size: 1.15rem; margin: 0; }
+.game-tabs { display: flex; gap: 6px; }
+.game-tab { border: 1px solid var(--border); background: var(--card-2); color: var(--muted); cursor: pointer;
+  font: 600 13.5px/1 inherit; font-family: inherit; padding: 9px 14px; border-radius: 999px; }
+.game-tab:hover { color: var(--text); }
+.game-tab[aria-selected="true"] { color: #fff; border-color: transparent; background: linear-gradient(90deg, #7c3aed, #4f46e5); }
+.game { display: none; padding: 16px; }
+.game.active { display: block; }
+.game-intro { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.game-intro b { color: var(--text); }
+.game-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .game-body { grid-template-columns: 1fr; } }
+.game-canvas { width: 100%; aspect-ratio: 900 / 260; display: block; border-radius: 12px;
+  background: linear-gradient(180deg, var(--card-2), var(--card)); border: 1px solid var(--border); }
+.game-side { display: grid; gap: 10px; }
+.cam { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden;
+  background: #05070f; border: 1px solid var(--border); }
+.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.game-meter { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.game-meter .track { height: 10px; border-radius: 999px; background: var(--card-2); overflow: hidden; display: block; }
+.game-meter .track span { display: block; height: 100%; width: 0; border-radius: inherit; background: rgb(148 163 184 / .6); transition: width .08s linear; }
+.game-meter .track.on span { background: linear-gradient(90deg, #8b5cf6, #06b6d4); }
+.game-hint { font-size: 12.5px; color: #f59e0b; min-height: 1em; }
+
+.actor-stage { min-height: 300px; display: grid; place-content: center; justify-items: center; text-align: center; gap: 6px;
+  border-radius: 12px; border: 1px solid var(--border); background: linear-gradient(180deg, var(--card-2), var(--card)); padding: 20px; }
+.actor-round { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.actor-emoji { font-size: 72px; line-height: 1.1; }
+.actor-target { font-size: 1.6rem; font-weight: 800; text-transform: capitalize; }
+.actor-count { color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em; }
+.actor-meter { width: min(360px, 80vw); height: 12px; border-radius: 999px; background: var(--card-2); overflow: hidden; margin-top: 6px; }
+.actor-meter span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #06b6d4); transition: width .08s linear; }
+.actor-result { font-size: 1.6rem; font-weight: 800; }
+.actor-total { font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.actor-total span { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
+.actor-scores { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; width: min(380px, 80vw); }
+.actor-scores li { display: grid; grid-template-columns: 110px 1fr 34px; align-items: center; gap: 8px; font-size: 13.5px; text-transform: capitalize; }
+.actor-scores .bar { height: 8px; border-radius: 999px; background: var(--card-2); overflow: hidden; display: block; }
+.actor-scores .bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #06b6d4); }
+.actor-scores b { text-align: right; font-variant-numeric: tabular-nums; }
+.actor-best { color: var(--muted); font-size: 13px; margin-top: 6px; }

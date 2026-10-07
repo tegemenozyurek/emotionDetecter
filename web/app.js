@@ -207,25 +207,33 @@ async function processFrame(source, width, height, detections, mirrored, smooth)
     .sort((p, q) => q.box[2] * q.box[3] - p.box[2] * p.box[3])
     .slice(0, MAX_FACES);
   const model = state.model;
-  let crops = [];
+  let crops = [], mainProbs = null;
   if (faces.length) {
     crops = faces.map((f) => extractFace(source, f.kp, model));
     const probs = await classify(crops, model);
     if (model !== state.model) return;  // the user switched models meanwhile
     track(faces, probs, now, smooth);
+    mainProbs = probs[0];  // largest face, unsmoothed: games need the fastest reaction
   } else {
     state.tracks = state.tracks.filter((t) => now - t.seen < TRACK_TTL_MS);
   }
   state.faces = faces.length;
-  drawOverlay(faces, width, height, mirrored);
+  if (state.mode === "camera") {
+    window.dispatchEvent(new CustomEvent("emotion", { detail: {
+      probs: mainProbs, smoothed: faces[0]?.track.probs ?? null, box: faces[0]?.box ?? null,
+      width, height, source, emotions: state.manifest.emotions, emoji: state.manifest.emoji,
+    } }));
+  }
+  if (source === ui.video || source === ui.still) drawOverlay(faces, width, height, mirrored);
   renderPanel(faces[0]?.track, faces.length);
   renderCrops(crops, model.size);
   tickFps(now);
 }
 
-async function cameraLoop() {
-  if (state.mode !== "camera") return;
-  const v = ui.video;
+// One loop per camera target: moving the camera starts a new loop and the old one ends here.
+async function cameraLoop(id) {
+  if (id !== state.loopId || state.mode !== "camera" || !state.source) return;
+  const v = state.source;
   if (v.readyState >= 2 && !state.busy) {
     state.busy = true;
     try {
@@ -235,8 +243,8 @@ async function cameraLoop() {
       state.busy = false;
     }
   }
-  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(cameraLoop);
-  else requestAnimationFrame(cameraLoop);
+  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(() => cameraLoop(id));
+  else requestAnimationFrame(() => cameraLoop(id));
 }
 
 // Photos: faces filling the whole picture are hard for the detector, so retry on a padded copy.
@@ -411,35 +419,56 @@ async function selectModel(version) {
   if (state.mode === "photo") await runPhoto();
 }
 
-async function startCamera() {
-  try {
-    state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, audio: false,
-    });
-  } catch (err) {
-    ui.empty.hidden = false;
-    ui.empty.innerHTML = `<div class="empty-icon">📷</div><p>Camera not available: ${err.message}</p>` +
-      `<p class="muted">Allow camera access in the address bar, or upload a photo instead.</p>`;
-    return;
+// The camera feeds one <video> at a time: the main stage, or a game's own camera view.
+// Only that element is shown and analysed, so the stage goes dark while a game plays.
+async function startCamera(target = ui.video) {
+  if (!state.stream) {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, audio: false,
+      });
+    } catch (err) {
+      ui.empty.hidden = false;
+      ui.empty.innerHTML = `<div class="empty-icon">📷</div><p>Camera not available: ${err.message}</p>` +
+        `<p class="muted">Allow camera access in the address bar, or upload a photo instead.</p>`;
+      return;
+    }
   }
-  ui.video.srcObject = state.stream;
-  await ui.video.play();
+  if (state.source && state.source !== target) state.source.srcObject = null;
+  target.srcObject = state.stream;
+  await target.play();
+  state.source = target;
+  const onStage = target === ui.video;
   ui.video.classList.add("mirrored");
-  ui.video.hidden = false;
+  ui.video.hidden = !onStage;
   ui.still.hidden = true;
-  ui.empty.hidden = true;
-  setAspect(ui.video.videoWidth, ui.video.videoHeight);
-  state.mode = "camera";
+  ui.empty.hidden = onStage;
+  if (onStage) {
+    setAspect(ui.video.videoWidth, ui.video.videoHeight);
+  } else {
+    ui.empty.innerHTML = `<div class="empty-icon">🎮</div><p>The camera is being used by the game below.</p>` +
+      `<p class="muted">Press “Start camera” to bring it back here.</p>`;
+    drawOverlay([], 1, 1, false);
+  }
+  ui.camera.textContent = onStage ? "Stop camera" : "Start camera";
   state.tracks = [];
-  ui.camera.textContent = "Stop camera";
-  cameraLoop();
+  state.mode = "camera";
+  state.loopId = (state.loopId || 0) + 1;
+  cameraLoop(state.loopId);
 }
 
 function stopCamera() {
+  if (state.source && state.source !== ui.video) {  // the camera was in a game: reset the stage message
+    ui.empty.innerHTML = `<div class="empty-icon">🙂</div><p>Turn on your camera or drop a photo here.</p>` +
+      `<p class="muted">Everything runs on this device. No image or video is uploaded.</p>`;
+  }
   state.stream?.getTracks().forEach((t) => t.stop());
+  if (state.source) state.source.srcObject = null;
   state.stream = null;
+  state.source = null;
   state.mode = "idle";
   ui.camera.textContent = "Start camera";
+  window.dispatchEvent(new CustomEvent("camerastop"));
 }
 
 async function openPhoto(file) {
@@ -452,7 +481,8 @@ async function openPhoto(file) {
   await runPhoto(await createImageBitmap(file));
 }
 
-ui.camera.addEventListener("click", () => (state.mode === "camera" ? stopCamera() : startCamera()));
+ui.camera.addEventListener("click", () =>
+  (state.mode === "camera" && state.source === ui.video ? stopCamera() : startCamera(ui.video)));
 ui.file.addEventListener("change", () => openPhoto(ui.file.files[0]));
 ui.showCrops.addEventListener("change", () => {
   ui.crops.hidden = !ui.showCrops.checked;
@@ -555,9 +585,13 @@ async function init() {
   ui.camera.disabled = false;
 }
 
-// Test hook: run the photo pipeline on an image URL (used to check the app against Python).
+// Used by games.js (camera control) and by tests (photo pipeline on an image URL).
 window.emotionDetecter = {
   state, fitSimilarity, extractFace, selectModel,
+  startCamera: (target) => startCamera(target),
+  stopCamera: () => stopCamera(),
+  get stream() { return state.stream; },
+  get ready() { return !ui.camera.disabled; },
   async photoFromUrl(url) {
     state.mode = "photo";
     ui.video.hidden = true;

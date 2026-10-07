@@ -6,7 +6,7 @@
 <title>emotionDetecter · live</title>
 <meta name="description" content="Real-time facial emotion recognition that runs entirely in your browser. Video never leaves your device.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -61,6 +61,45 @@
   </aside>
 </main>
 
+<section class="games" id="games">
+  <div class="games-head">
+    <h2>Games</h2>
+    <div class="game-tabs" role="tablist">
+      <button class="game-tab" role="tab" data-game="dino">🦖 Reaction Dino</button>
+      <button class="game-tab" role="tab" data-game="actor">🎭 Actor Game</button>
+    </div>
+  </div>
+
+  <div class="game card" id="game-dino">
+    <p class="game-intro">You are the cube. It runs on its own: <b>smile</b> to jump over cacti, <b>look surprised</b> to duck under birds.</p>
+    <div class="game-body">
+      <canvas id="dinoCanvas" class="game-canvas"></canvas>
+      <div class="game-side">
+        <div class="cam"><video id="dinoCam" playsinline muted></video><canvas id="dinoCamOverlay"></canvas></div>
+        <div class="game-meter"><span class="label">😄 jump</span><span class="track"><span id="dinoSmile"></span></span></div>
+        <div class="game-meter"><span class="label">😮 duck</span><span class="track"><span id="dinoSurprise"></span></span></div>
+        <div class="game-hint" id="dinoHint"></div>
+        <button class="btn primary" id="dinoStart">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="game card" id="game-actor">
+    <p class="game-intro">An emotion appears, you act it for 3 seconds, and the model scores how convincing you were. 5 rounds, 100 points each.</p>
+    <div class="game-body">
+      <div class="actor-stage" id="actorStage">
+        <div class="actor-emoji">🎭</div>
+        <div class="actor-target">Ready for your close-up?</div>
+        <div class="actor-best" id="actorBest"></div>
+      </div>
+      <div class="game-side">
+        <div class="cam"><video id="actorCam" playsinline muted></video><canvas id="actorCamOverlay"></canvas></div>
+        <button class="btn primary" id="actorStart">Start</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="about" id="about">
   <details class="fold">
   <summary><span>How it works</span><span class="chev" aria-hidden="true">›</span></summary>
@@ -86,6 +125,7 @@
   Predictions are a model's guess about a facial expression, not a judgement of how someone feels.</p>
 </footer>
 
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=10"></script>
+<script type="module" src="games.js?v=10"></script>
 </body>
 </html>
