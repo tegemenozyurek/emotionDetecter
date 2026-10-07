@@ -54,6 +54,42 @@ models/<version>/   model.pt · config.json · history.csv · train_log.txt · t
 assets/<version>/   training_curves.png · confusion_matrix[_ferplus].png · predictions[_ferplus].png
 ```
 
+## Model versions: what's different
+
+All three versions use **the same network** ([`src/model.py`](src/model.py), 4.8M parameters) and the same optimizer (AdamW, lr 1e-3, batch 128, class-weighted loss). They differ only in **what data the network sees during training**:
+
+| | `eD0.1` | `eD0.5` | `eD0.7` |
+|---|---|---|---|
+| Training labels | FER-2013 (original) | FER-2013 (original) | **FER+** (10 annotators) |
+| Training images | 25,837 | 25,837 | 22,447 (ambiguous faces removed) |
+| Data augmentation | no | **flip, rotate, shift, zoom, erase** | flip, rotate, shift, zoom, erase |
+| Epochs | 40 | 60 | 60 |
+| Best epoch | 36 | 60 | 47 |
+| Train / val gap at the end | 23 pts (memorizing) | 2 pts | 0 pts |
+| **FER+ test accuracy** | 66.8% | 73.4% | **80.1%** |
+
+**`eD0.1`: baseline.** Trained on the raw dataset with no tricks. It learned fast, but after ~20 epochs it started memorizing the training faces (87% train vs 64% validation), and it falls apart on tilted or off-centre faces (58.9%).
+
+**`eD0.5`: fixes overfitting.** Every training image is randomly mirrored, rotated, shifted, zoomed and partly erased, so the network never sees the same picture twice and has to learn the expression itself. Overfitting disappears, and accuracy on distorted faces jumps from 58.9% to 69.8%. This only became visible after switching to cleaner test labels: on the original FER-2013 test set `eD0.1` and `eD0.5` both score 65.8%.
+
+**`eD0.7`: fixes the labels.** Same recipe as `eD0.5`, but trained on FER+ labels, where about a third of FER-2013's labels are corrected. The model stops learning "this calm face is *fear*" and gains another **+6.7 points**. This is the default model in the app.
+
+Per-emotion F1 on the FER+ test set shows where each step helped:
+
+| emotion | `eD0.1` | `eD0.5` | `eD0.7` | test faces |
+|---|---:|---:|---:|---:|
+| neutral | 62.2% | 72.4% | **82.1%** | 2,272 |
+| happy | 87.7% | **91.2%** | 90.1% | 1,758 |
+| surprise | 81.3% | 84.0% | **85.9%** | 811 |
+| sad | 46.0% | 51.7% | **56.2%** | 735 |
+| angry | 61.1% | 67.2% | **74.2%** | 560 |
+| fear | 28.2% | 33.7% | **54.2%** | 145 |
+| disgust | 41.4% | 34.9% | **41.8%** | 42 |
+
+- **Neutral** made the biggest difference: recall went 49% → 62% → 83%. The older models were trained on labels where many neutral faces were called *sad* or *fear*, so they kept refusing to say *neutral*. Neutral is 36% of the test set, which explains most of the overall gain.
+- **Fear** precision more than doubled (18% → 44%). The old models called many sad or neutral faces *fear*, copying the label noise.
+- **Disgust** barely moved. FER+ keeps only 119 training images of it, so it stays the weakest class in every version.
+
 ## Project structure
 
 ```
