@@ -8,6 +8,7 @@ After each epoch we check accuracy on the validation set and keep the best model
 Usage:
   python scripts/train.py --name eD0.1                  # baseline
   python scripts/train.py --name eD0.5 --augment --epochs 60 --patience 5
+  python scripts/train.py --name eD0.7 --augment --epochs 60 --patience 5 --data ferplus
 
 Outputs (one folder per model version):
   models/<name>/model.pt               — weights of the epoch with the best val accuracy
@@ -33,7 +34,7 @@ sys.path.insert(0, str(ROOT))
 from src.augment import augment  # noqa: E402
 from src.model import EmotionCNN, get_device  # noqa: E402
 
-DATA = ROOT / "data" / "processed" / "fer2013.npz"
+PROCESSED = ROOT / "data" / "processed"
 MODELS = ROOT / "models"
 ASSETS = ROOT / "assets"
 
@@ -103,6 +104,8 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--augment", action="store_true", help="apply data augmentation (step 8)")
     parser.add_argument("--patience", type=int, default=3, help="epochs without improvement before halving lr")
+    parser.add_argument("--data", default="fer2013", choices=["fer2013", "ferplus"],
+                        help="labels to train on: original FER-2013 or the cleaner FER+")
     parser.add_argument("--name", required=True, help="model version, e.g. eD0.5 -> models/eD0.5/")
     args = parser.parse_args()
 
@@ -120,7 +123,7 @@ def main():
 
     torch.manual_seed(42)
     device = get_device()
-    data = np.load(DATA)
+    data = np.load(PROCESSED / f"{args.data}.npz")
 
     # The whole dataset (~250 MB) fits in GPU memory, so load it once.
     to_x = lambda a: torch.from_numpy(a).unsqueeze(1).to(device)
@@ -137,7 +140,7 @@ def main():
 
     history, best_acc, best_epoch = [], 0.0, 0
     log(f"Model {args.name} | training on {device} | {len(X_train):,} train / {len(X_val):,} val images | "
-        f"{args.epochs} epochs, batch {args.batch_size}, lr {args.lr}, augment={args.augment}\n")
+        f"{args.epochs} epochs, batch {args.batch_size}, lr {args.lr}, augment={args.augment}, data={args.data}\n")
     log(f"{'epoch':>5} {'train_loss':>10} {'train_acc':>9} {'val_loss':>9} {'val_acc':>8} {'lr':>8} {'time':>6}")
 
     for epoch in range(1, args.epochs + 1):

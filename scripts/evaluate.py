@@ -2,6 +2,7 @@
 
 Usage:
   python scripts/evaluate.py --model eD0.5
+  python scripts/evaluate.py --model eD0.7 --data ferplus   # outputs get a _ferplus suffix
 
 Prints overall accuracy plus precision / recall / F1 for each emotion, and saves:
   assets/<model>/confusion_matrix.png   — which emotions get confused with which
@@ -24,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from src.model import EmotionCNN, get_device  # noqa: E402
 
-DATA = ROOT / "data" / "processed" / "fer2013.npz"
+PROCESSED = ROOT / "data" / "processed"
 MODELS = ROOT / "models"
 ASSETS = ROOT / "assets"
 
@@ -121,13 +122,16 @@ def plot_predictions(X, y, probs, emotions, mean, std, out_path, n=24, seed=7):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="model version, e.g. eD0.5 -> models/eD0.5/model.pt")
+    parser.add_argument("--data", default="fer2013", choices=["fer2013", "ferplus"],
+                        help="test labels: original FER-2013 or FER+")
     parser.add_argument("--no-tta", dest="tta", action="store_false", help="disable test-time augmentation")
     args = parser.parse_args()
     model_dir = MODELS / args.model
     plot_dir = ASSETS / args.model
     plot_dir.mkdir(parents=True, exist_ok=True)
+    sfx = "" if args.data == "fer2013" else f"_{args.data}"
 
-    data = np.load(DATA)
+    data = np.load(PROCESSED / f"{args.data}.npz")
     emotions = [str(e) for e in data["emotions"]]
     X_test, y_test = data["X_test"], data["y_test"]
 
@@ -139,15 +143,15 @@ def main():
     probs = predict(model, X_test, device, tta=args.tta)
     cm = confusion_matrix(y_test, probs.argmax(1), len(emotions))
 
-    report = f"Model: {args.model} | TTA: {args.tta}\n" + build_report(cm, emotions)
+    report = f"Model: {args.model} | TTA: {args.tta} | labels: {args.data}\n" + build_report(cm, emotions)
     print(report)
-    (model_dir / "test_report.txt").write_text(report + "\n")
+    (model_dir / f"test_report{sfx}.txt").write_text(report + "\n")
 
-    plot_confusion(cm, emotions, plot_dir / "confusion_matrix.png")
+    plot_confusion(cm, emotions, plot_dir / f"confusion_matrix{sfx}.png")
     plot_predictions(X_test, y_test, probs, emotions, float(data["mean"]), float(data["std"]),
-                     plot_dir / "predictions.png")
-    print(f"\nSaved {plot_dir.relative_to(ROOT)}/confusion_matrix.png, {plot_dir.relative_to(ROOT)}/predictions.png, "
-          f"{model_dir.relative_to(ROOT)}/test_report.txt")
+                     plot_dir / f"predictions{sfx}.png")
+    print(f"\nSaved {plot_dir.relative_to(ROOT)}/confusion_matrix{sfx}.png, {plot_dir.relative_to(ROOT)}/predictions{sfx}.png, "
+          f"{model_dir.relative_to(ROOT)}/test_report{sfx}.txt")
 
 
 if __name__ == "__main__":

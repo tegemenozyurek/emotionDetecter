@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Gradio](https://img.shields.io/badge/demo-Gradio-F97316?logo=gradio&logoColor=white)](app.py)
-[![Dataset](https://img.shields.io/badge/data-FER--2013-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/msambare/fer2013)
+[![Dataset](https://img.shields.io/badge/data-FER--2013%20%2B%20FER%2B-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/msambare/fer2013)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Real-time facial emotion recognition with a CNN trained from scratch.** Upload a photo or turn on your webcam, and the model finds every face and tells you whether it looks angry, disgusted, afraid, happy, neutral, sad or surprised.
@@ -12,9 +12,10 @@
 
 ## Highlights
 
-- **65.8% test accuracy on FER-2013**, roughly human-level for this dataset (people agree with the labels ~65% of the time).
-- **Robust to real-world faces:** the augmented model `eD0.5` keeps **63%** accuracy on tilted, shifted and partly covered faces, where the baseline drops to 56%.
-- **Interactive demo:** a Gradio app with photo upload, live webcam, and a switch between model versions.
+- **80.1% test accuracy** with `eD0.7`, measured on the cleaner [FER+](https://github.com/microsoft/FERPlus) labels (10 annotators per image). The baseline scores 66.8% on the same test.
+- **Fixing the labels beat fixing the model.** A third of FER-2013's labels change under FER+. Retraining the same network on the corrected labels added **+6.7 points**.
+- **Robust to real-world faces:** 77.5% on tilted, shifted, zoomed and partly covered faces, where the baseline drops to 58.9%.
+- **Interactive demo:** a Gradio app with photo upload, live webcam, a model picker, and an *About models* tab that compares every version.
 - **Small and fast:** 4.8M parameters (19 MB), runs on a laptop CPU. Each version trains in about an hour on an Apple M4.
 - **Built step by step:** every stage (data → preprocessing → model → training → evaluation → improvement) is its own script with its own plots, documented [below](#how-it-was-built).
 
@@ -30,33 +31,39 @@ pip install -r requirements.txt
 python app.py        # open http://127.0.0.1:7860
 ```
 
-The app ([`app.py`](app.py)) finds faces with OpenCV's Haar cascade, crops each to 48×48, classifies it, and draws the result on the image with a probability chart. The **Live webcam** tab updates in real time.
+The app ([`app.py`](app.py)) finds faces with OpenCV's Haar cascade, crops each to 48×48, classifies it, and draws the result on the image with a probability chart. The **Live webcam** tab updates in real time, and **About models** compares the versions (hover a model name to see what changed).
 
 ## Results
 
-| version | what changed | val acc | test acc | test acc, distorted faces |
-|---|---|---:|---:|---:|
-| `eD0.1` | baseline CNN, 40 epochs, no augmentation | 64.9% | 65.8% | 56.1% |
-| `eD0.5` | + data augmentation, 60 epochs | 64.6% | 65.8% | **63.0%** |
+All versions are compared on the same **FER+ test set** (6,323 faces with a clear majority label):
 
-![Robustness](assets/robustness.png)
+| version | what changed | FER+ test | FER+ test, distorted faces | original FER-2013 test |
+|---|---|---:|---:|---:|
+| `eD0.1` | baseline CNN, 40 epochs, no augmentation | 66.8% | 58.9% | 65.8% |
+| `eD0.5` | + data augmentation, 60 epochs | 73.4% | 69.8% | 65.8% |
+| `eD0.7` | + trained on FER+ labels | **80.1%** | **77.5%** | 57.1%* |
+
+\* `eD0.7` scores lower on the original labels because it learned the corrected ones: most of the faces FER-2013 calls *fear* or *sad* are *neutral* according to FER+.
+
+![Robustness](assets/robustness_ferplus.png)
 
 Every version lives in its own folder with its weights, settings, logs and test report:
 
 ```
-models/<version>/   model.pt · config.json · history.csv · train_log.txt · test_report.txt
-assets/<version>/   training_curves.png · confusion_matrix.png · predictions.png
+models/<version>/   model.pt · config.json · history.csv · train_log.txt · test_report[_ferplus].txt
+assets/<version>/   training_curves.png · confusion_matrix[_ferplus].png · predictions[_ferplus].png
 ```
 
 ## Project structure
 
 ```
 emotionDetecter/
-├── app.py                        # Gradio demo (photo + live webcam, model picker)
+├── app.py                        # Gradio demo (photo, live webcam, model picker, About models)
 ├── src/
 │   ├── model.py                  # EmotionCNN — 4 conv blocks + classifier head
 │   ├── augment.py                # on-GPU augmentation (flip/rotate/shift/zoom/erase)
-│   └── predictor.py              # face detection + preprocessing + inference
+│   ├── predictor.py              # face detection + preprocessing + inference
+│   └── model_info.py             # per-version metrics, read from logs & reports
 ├── scripts/
 │   ├── download_data.py          # 1. fetch FER-2013 from Kaggle
 │   ├── explore_data.py           # 2. class balance, samples, average faces
@@ -66,6 +73,7 @@ emotionDetecter/
 │   ├── evaluate.py               # 6. test-set metrics + confusion matrix
 │   ├── preview_augmentation.py   # 7. visualize augmentation
 │   ├── robustness.py             # 8. clean vs. distorted comparison
+│   ├── prepare_ferplus.py        # 9. relabel the images with FER+ votes
 │   └── make_showcase.py          #    README header image
 ├── models/                       # one folder per trained version
 └── assets/                       # all plots
@@ -81,13 +89,17 @@ mkdir -p ~/.kaggle && echo YOUR_TOKEN > ~/.kaggle/access_token && chmod 600 ~/.k
 python scripts/download_data.py
 python scripts/preprocess.py
 
-# 3. Train + evaluate a new version
-python scripts/train.py --name eD0.6 --augment --epochs 80 --patience 5
-python scripts/evaluate.py --model eD0.6
-python scripts/robustness.py
+# 3. Optional: FER+ labels. Needs data/ferplus/fer2013.csv (original FER-2013 csv) and
+#    data/ferplus/fer2013new.csv from https://github.com/microsoft/FERPlus
+python scripts/prepare_ferplus.py
+
+# 4. Train + evaluate a new version
+python scripts/train.py --name eD0.8 --augment --epochs 80 --patience 5 --data ferplus
+python scripts/evaluate.py --model eD0.8 --data ferplus
+python scripts/robustness.py --data ferplus
 ```
 
-The dataset itself is not in this repo. It downloads to `data/fer2013/{train,test}/<emotion>/`.
+The datasets themselves are not in this repo. Images download to `data/fer2013/{train,test}/<emotion>/`.
 
 ## How it was built
 
@@ -199,23 +211,45 @@ On the clean test set both versions score **65.8%**. The difference shows up whe
 
 `eD0.5` is the default model in the app.
 
+### Cleaner labels: FER+ (`eD0.7`)
+
+Looking at the mistakes in step 7, many "wrong" predictions looked right: smiling faces labelled *angry*, calm faces labelled *fear*. Microsoft's [FER+](https://github.com/microsoft/FERPlus) had every FER-2013 image re-labelled by 10 people. Its label file follows the row order of the original `fer2013.csv`, while the Kaggle images have random file names, so [`scripts/prepare_ferplus.py`](scripts/prepare_ferplus.py) matches every image to its row by pixel distance on the GPU. All 35,887 matched, and the old labels agreed 99.8% of the time, which confirms the matching.
+
+Each image gets the FER+ majority vote. Images without a clear majority, non-faces and *contempt* (not one of our 7 classes) are dropped, which leaves 31,264 images. **32% of the remaining labels change.** Most original *fear* and *sad* faces are *neutral* according to the annotators:
+
+![FER+ label changes](assets/ferplus/label_changes.png)
+
+![Relabelled examples](assets/ferplus/relabeled_examples.png)
+
+`eD0.7` uses exactly the `eD0.5` recipe, but trained on FER+ labels:
+
+```bash
+python scripts/train.py --name eD0.7 --augment --epochs 60 --patience 5 --data ferplus
+python scripts/evaluate.py --model eD0.7 --data ferplus
+```
+
+![eD0.7 training curves](assets/eD0.7/training_curves.png)
+
+On the FER+ test set it reaches **80.1%**, against 73.4% for `eD0.5`. Cleaner test labels already lift the older models (`eD0.5`: 65.8% → 73.4%), because many of their "mistakes" were correct answers to wrong labels. Cleaner training labels add another 6.7 points on top.
+
+![eD0.7 confusion matrix](assets/eD0.7/confusion_matrix_ferplus.png)
+
 ## Limitations
 
-- **FER-2013 is noisy.** Some labels are wrong (see the smiling "angry" face in the predictions grid), which caps achievable accuracy around 70–75%.
-- **Fear is hard.** Recall is only 31–38% depending on the version; it is mostly confused with *sad* and *neutral*.
+- **FER-2013 is noisy.** About a third of its labels disagree with the FER+ re-annotation. `eD0.7` trains on FER+, but FER+ still drops ~13% of images that annotators could not agree on, so those harder faces are never evaluated.
+- **Rare emotions are still weak.** Under FER+ only 119 training images are *disgust* and 532 *fear*. `eD0.7` reaches 55% and 71% recall on them, but with low precision (34% and 44%).
 - **The face detector is the weak link.** The Haar cascade only finds roughly frontal faces and occasionally fires on ears or background. False positives are filtered, but a modern detector (e.g. YuNet) would be more reliable.
 - **Dataset bias.** FER-2013 was scraped from the web and is not balanced across age, ethnicity or lighting conditions, so accuracy will vary between people. This is a learning project, not a tool for making decisions about anyone.
 
 ## Ideas for next versions
 
-- Train `eD0.5` longer: its best epoch was the last one.
 - Swap the Haar cascade for a DNN face detector (YuNet).
 - Try transfer learning from a pretrained backbone (e.g. ResNet-18).
 - Deploy the demo to Hugging Face Spaces.
 
 ## Acknowledgements
 
-FER-2013 was introduced in *Challenges in Representation Learning: A report on three machine learning contests* (Goodfellow et al., 2013) for the ICML 2013 workshop. The images and labels belong to their original creators and are not redistributed here.
+FER-2013 was introduced in *Challenges in Representation Learning: A report on three machine learning contests* (Goodfellow et al., 2013) for the ICML 2013 workshop. The FER+ labels come from *Training Deep Networks for Facial Expression Recognition with Crowd-Sourced Label Distribution* (Barsoum et al., 2016), released by Microsoft under the MIT license. The images and labels belong to their original creators and are not redistributed here.
 
 ## License
 

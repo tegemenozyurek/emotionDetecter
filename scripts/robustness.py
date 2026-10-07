@@ -5,12 +5,13 @@ are off-centre, hands cover part of the face. Here we distort the TEST set in
 controlled ways and measure how much each model's accuracy drops.
 
 Usage:
-  python scripts/robustness.py                    # all model versions
+  python scripts/robustness.py                         # all versions, original labels
   python scripts/robustness.py eD0.1 eD0.5
+  python scripts/robustness.py --data ferplus          # FER+ test labels
 
 Outputs:
-  assets/robustness.png       — accuracy per condition, one bar per model
-  models/robustness.txt       — the printed table
+  assets/robustness[_ferplus].png   — accuracy per condition, one bar per model
+  models/robustness[_ferplus].txt   — the printed table
 """
 import sys
 from pathlib import Path
@@ -25,7 +26,7 @@ from src.augment import augment  # noqa: E402
 from src.model import EmotionCNN, get_device  # noqa: E402
 from src.predictor import available_models  # noqa: E402
 
-DATA = ROOT / "data" / "processed" / "fer2013.npz"
+PROCESSED = ROOT / "data" / "processed"
 NO_CHANGE = dict(max_rotate=0, max_shift=0, scale_range=(1, 1), erase_prob=0)
 CONDITIONS = {
     "clean": None,
@@ -55,7 +56,7 @@ def accuracy(model, X, y, device, distortion, batch_size=512):
     return correct / len(X)
 
 
-def plot(results, versions):
+def plot(results, versions, out_path, labels):
     conditions = list(CONDITIONS)
     x = np.arange(len(conditions))
     width = 0.8 / len(versions)
@@ -69,7 +70,7 @@ def plot(results, versions):
             ax.annotate(f"{bar.get_height():.0%}", (bar.get_x() + bar.get_width() / 2, bar.get_height()),
                         xytext=(0, 3), textcoords="offset points", ha="center", fontsize=9, color=TEXT_MUTED)
     ax.set_xticks(x, conditions)
-    ax.set_ylim(0.4, 0.72)
+    ax.set_ylim(0.4, max(0.72, max(max(r.values()) for r in results.values()) + 0.05))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0%}"))
     ax.yaxis.grid(True, color=GRID, lw=0.8)
     ax.set_axisbelow(True)
@@ -78,15 +79,22 @@ def plot(results, versions):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(GRID)
     ax.legend(frameon=False, loc="upper right", ncols=len(versions))
-    ax.set_title("Test accuracy on clean vs. distorted faces", loc="left", fontsize=14, color=TEXT)
+    ax.set_title(f"Test accuracy on clean vs. distorted faces ({labels} labels)", loc="left", fontsize=14, color=TEXT)
     fig.tight_layout()
-    fig.savefig(ROOT / "assets" / "robustness.png", dpi=150)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
 def main():
-    versions = sys.argv[1:] or available_models()
-    data = np.load(DATA)
+    args = sys.argv[1:]
+    data_name = "fer2013"
+    if "--data" in args:
+        i = args.index("--data")
+        data_name = args[i + 1]
+        del args[i:i + 2]
+    versions = args or available_models()
+    sfx = "" if data_name == "fer2013" else f"_{data_name}"
+    data = np.load(PROCESSED / f"{data_name}.npz")
     X = torch.from_numpy(data["X_test"]).unsqueeze(1)
     y = torch.from_numpy(data["y_test"])
     device = get_device()
@@ -103,9 +111,10 @@ def main():
         lines.append(f"{name:<16}" + "".join(f"{results[v][name]:>9.1%}" for v in versions))
     table = "\n".join(lines)
     print(table)
-    (ROOT / "models" / "robustness.txt").write_text(table + "\n")
-    plot(results, versions)
-    print("\nSaved assets/robustness.png, models/robustness.txt")
+    (ROOT / "models" / f"robustness{sfx}.txt").write_text(table + "\n")
+    plot(results, versions, ROOT / "assets" / f"robustness{sfx}.png",
+         "FER+" if data_name == "ferplus" else "original FER-2013")
+    print(f"\nSaved assets/robustness{sfx}.png, models/robustness{sfx}.txt")
 
 
 if __name__ == "__main__":

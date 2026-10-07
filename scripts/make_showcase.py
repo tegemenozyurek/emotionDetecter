@@ -5,6 +5,7 @@ Usage:
   python scripts/make_showcase.py              # newest model
   python scripts/make_showcase.py eD0.1
 """
+import json
 import sys
 from pathlib import Path
 
@@ -17,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 from src.model import EmotionCNN, get_device  # noqa: E402
 from src.predictor import available_models  # noqa: E402
 
-DATA = ROOT / "data" / "processed" / "fer2013.npz"
+PROCESSED = ROOT / "data" / "processed"
 TOP_COLOR = "#2a78d6"
 OTHER_COLOR = "#c9d9ef"
 TEXT = "#0b0b0b"
@@ -27,7 +28,9 @@ SURFACE = "#fcfcfb"
 
 def main():
     version = sys.argv[1] if len(sys.argv) > 1 else available_models()[-1]
-    data = np.load(DATA)
+    config = json.loads((ROOT / "models" / version / "config.json").read_text())
+    data_name = config.get("data", "fer2013")  # show faces with the labels the model learned
+    data = np.load(PROCESSED / f"{data_name}.npz")
     emotions = [str(e) for e in data["emotions"]]
     X, y = data["X_test"], data["y_test"]
     mean, std = float(data["mean"]), float(data["std"])
@@ -77,7 +80,8 @@ def main():
                     color=TEXT if p.max() < 0.75 else "white")
         ax_bar.set_facecolor(SURFACE)
 
-    fig.suptitle(f"Test-set faces the model has never seen, with its predicted probabilities ({version})",
+    labels = "FER+" if data_name == "ferplus" else "FER-2013"
+    fig.suptitle(f"Test-set faces the model has never seen, with its predicted probabilities ({version}, {labels} labels)",
                  x=0.01, ha="left", fontsize=12, color=TEXT_MUTED)
     out = ROOT / "assets" / "showcase.png"
     fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=SURFACE)

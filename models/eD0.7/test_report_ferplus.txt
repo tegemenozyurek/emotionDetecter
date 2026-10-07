@@ -1,0 +1,19 @@
+Model: eD0.7 | TTA: False | labels: ferplus
+Test accuracy: 80.1%  (5,063 / 6,323 correct)
+
+emotion   precision  recall     f1  support
+angry         71.4%   77.1%  74.2%      560
+disgust       33.8%   54.8%  41.8%       42
+fear          43.8%   71.0%  54.2%      145
+happy         91.9%   88.4%  90.1%     1758
+neutral       81.7%   82.5%  82.1%     2272
+sad           61.1%   52.0%  56.2%      735
+surprise      86.3%   85.6%  85.9%      811
+macro avg     67.2%   73.1%  69.2%     6323
+
+Most common mistakes (true -> predicted):
+  sad       -> neutral    238  (32% of sad)
+  neutral   -> sad        191  (8% of neutral)
+  happy     -> neutral     73  (4% of happy)
+  neutral   -> happy       71  (3% of neutral)
+  angry     -> neutral     63  (11% of angry)

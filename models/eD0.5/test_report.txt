@@ -1,4 +1,4 @@
-Model: eD0.5 | TTA: False
+Model: eD0.5 | TTA: False | labels: fer2013
 Test accuracy: 65.8%  (4,722 / 7,178 correct)
 
 emotion   precision  recall     f1  support

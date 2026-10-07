@@ -1,0 +1,7 @@
+test condition      eD0.1    eD0.5    eD0.7
+clean               66.8%    73.4%    80.1%
+rotated ±15°        62.6%    71.9%    78.9%
+shifted ±10%        62.9%    71.4%    79.5%
+zoomed ±15%         63.1%    71.9%    79.5%
+partly covered      62.0%    71.9%    77.9%
+all combined        58.9%    69.8%    77.5%
