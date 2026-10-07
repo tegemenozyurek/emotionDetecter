@@ -10,9 +10,9 @@ import gradio as gr
 import pandas as pd
 
 from src import model_info
-from src.predictor import EMOJI, EMOTIONS, ROOT, EmotionPredictor, available_models
+from src.predictor import EMOJI, EMOTIONS, ROOT, EmotionPredictor, classic_models
 
-MODELS = available_models()
+MODELS = classic_models()  # eDv models run in the web app (web/)
 DEFAULT_MODEL = max(MODELS, key=lambda v: model_info.load(v).test_ferplus or 0)  # best on FER+ test
 GITHUB = "https://github.com/tegemenozyurek/emotionDetecter"
 SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]  # same order as the matplotlib charts
@@ -92,6 +92,7 @@ def comparison_table():
         ("Training images", lambda i: f"{i.train_images:,}" if i.train_images else "—"),
         ("Training data", lambda i: i.dataset),
         ("Epochs", lambda i: f"{i.epochs_done}/{i.config.get('epochs', '?')}"),
+        ("Training time (Apple M4)", lambda i: i.train_time if i.train_seconds else "—"),
         ("Best validation", lambda i: pct(i.best_val)),
         ("Test · original labels", lambda i: pct(i.test_original)),
         ("Test · FER+ labels", lambda i: pct(i.test_ferplus)),

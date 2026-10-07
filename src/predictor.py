@@ -41,12 +41,23 @@ def _overlap(a, b):
 def available_models():
     """Model versions that have trained weights, e.g. ['eD0.1', 'eD0.5'] (oldest first)."""
     versions = [d.name for d in (ROOT / "models").iterdir() if (d / "model.pt").exists()]
-    return sorted(versions, key=lambda v: [int(n) if n.isdigit() else n for n in v.lstrip("eD").split(".")])
+    def order(v):  # eD0.1 < eD0.5 < eD0.7 < eDv1.0 < eDv1.1 ...
+        numbers = [int(n) for n in v.removeprefix("eD").lstrip("v").split(".") if n.isdigit()]
+        return ("v" in v, numbers)
+    return sorted(versions, key=order)
+
+
+def classic_models():
+    """eD0.x models: 48x48 FER-framed input, usable with the Haar-cascade pipeline below.
+    eDv models need MediaPipe alignment and run in the web app (web/)."""
+    import json
+    return [v for v in available_models()
+            if json.loads((ROOT / "models" / v / "config.json").read_text()).get("input") != "aligned64"]
 
 
 class EmotionPredictor:
     def __init__(self, version=None, device="cpu"):
-        versions = available_models()
+        versions = classic_models()
         if not versions:
             raise FileNotFoundError("No trained model in models/ — run scripts/train.py first.")
         self.version = version or versions[-1]  # newest by default

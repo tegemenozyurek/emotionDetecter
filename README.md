@@ -14,13 +14,13 @@
 
 Three versions of the same network, tested on the same 6,323 faces ([FER+](https://github.com/microsoft/FERPlus) labels):
 
-| model | what changed | trained on | test accuracy | tilted / covered faces |
-|---|---|---|---:|---:|
-| `eD0.1` | baseline | 25,837 FER-2013 images | 66.8% | 58.9% |
-| `eD0.5` | + data augmentation | 25,837 FER-2013 images | 73.4% | 69.8% |
-| `eD0.7` | + cleaner labels | 22,447 FER+ images | **80.1%** | **77.5%** |
+| model | what changed | trained on | training time | test accuracy | tilted / covered faces |
+|---|---|---|---:|---:|---:|
+| `eD0.1` | baseline | 25,837 FER-2013 images | 39 min | 66.8% | 58.9% |
+| `eD0.5` | + data augmentation | 25,837 FER-2013 images | 53 min | 73.4% | 69.8% |
+| `eD0.7` | + cleaner labels | 22,447 FER+ images | 40 min | **80.1%** | **77.5%** |
 
-Every model also holds out a validation set (2,872 images for `eD0.1`/`eD0.5`, 2,494 for `eD0.7`) to choose its best epoch; the test faces are never used for training.
+Training times are for a MacBook Air with an Apple M4 chip, using its built-in GPU (PyTorch MPS). Every model also holds out a validation set (2,872 images for `eD0.1`/`eD0.5`, 2,494 for `eD0.7`) to choose its best epoch; the test faces are never used for training.
 
 ![Robustness](assets/robustness_ferplus.png)
 
