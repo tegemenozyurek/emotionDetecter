@@ -1,6 +1,6 @@
 // emotionDetecter live: face detection (MediaPipe) -> alignment -> emotion model (ONNX Runtime Web).
 // Everything runs in the browser; no frame ever leaves the device.
-import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/vision_bundle.mjs";
+import { FaceDetector, FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/vision_bundle.mjs";
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.all.min.mjs";
 
 const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm";
@@ -12,13 +12,21 @@ const SUPERSAMPLE = 4;     // faces are cut out at 4x and box-averaged down, lik
 const SMOOTH_MS = 300;     // time constant of the probability smoothing
 const TRACK_TTL_MS = 600;  // forget a face that has not been seen for this long
 const MIN_SCORE = 0.5;     // face detector confidence
-const MAX_FACES = 4;
+const MAX_FACES = 6;
+const MIN_FACE_PX = 28;    // smaller faces carry too little detail to read an expression
+const VERIFY_MS = 1000;    // re-check each tracked face with the landmark model this often
+const MIN_HITS = 2;        // a live face must appear in 2 frames before it gets a label
+const UNSURE_BELOW = 0.4;  // below this confidence the app says "unsure" instead of guessing
+const MAX_YAW = 0.55;      // heads turned further than this are too sideways to judge
+const LANDMARKER_MODEL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
 const $ = (id) => document.getElementById(id);
 const ui = {
   video: $("video"), still: $("still"), overlay: $("overlay"), viewport: $("viewport"), empty: $("empty"),
   camera: $("camera"), file: $("file"), smooth: $("smooth"), showCrops: $("showCrops"), stats: $("stats"),
   models: $("models"), verdict: $("verdict"), bars: $("bars"), crops: $("crops"), cropsRow: $("cropsRow"),
+  people: $("people"),
 };
 const state = {
   manifest: null, model: null, sessions: new Map(), detectors: {}, mode: "idle", stream: null,
@@ -161,7 +169,7 @@ async function classify(crops, model) {
   });
 }
 
-// ---------------------------------------------------------------- tracking + smoothing
+// ---------------------------------------------------------------- finding real faces
 
 const iou = (p, q) => {
   const x1 = Math.max(p[0], q[0]), y1 = Math.max(p[1], q[1]);
@@ -170,53 +178,195 @@ const iou = (p, q) => {
   return inter / (p[2] * p[3] + q[2] * q[3] - inter);
 };
 
-// Each face keeps a running average of its probabilities, so a single noisy frame cannot flip the label.
-function track(faces, probs, now, smooth) {
+// Same rule as src/align.py plausible(): the keypoints must be laid out like a face.
+function plausible(kp, box) {
+  const [re, le, nose, mouth] = kp;
+  const eye = Math.hypot(le[0] - re[0], le[1] - re[1]);
+  const mid = [(le[0] + re[0]) / 2, (le[1] + re[1]) / 2];
+  const size = Math.max(box[2], box[3]);
+  return eye > 0.12 * size && eye < 0.9 * size
+    && Math.hypot(mouth[0] - mid[0], mouth[1] - mid[1]) > 0.4 * eye
+    && Math.hypot(nose[0] - mid[0], nose[1] - mid[1]) < 1.5 * eye;
+}
+
+function toCandidates(detections, width, height) {
+  return detections
+    .filter((d) => d.categories[0].score >= MIN_SCORE && d.keypoints.length >= 4)
+    .map((d) => ({
+      box: [d.boundingBox.originX, d.boundingBox.originY, d.boundingBox.width, d.boundingBox.height],
+      kp: d.keypoints.slice(0, 4).map((k) => [k.x * width, k.y * height]),
+      score: d.categories[0].score,
+    }))
+    .filter((f) => f.box[2] >= MIN_FACE_PX && plausible(f.kp, f.box));
+}
+
+// Second opinion: cut out the area around a candidate and ask MediaPipe's 478-point face
+// landmark model whether there really is a face there. Posters, toys, patterns, ears and
+// other look-alikes usually fail this. Also estimates how far the head is turned (yaw).
+const verifyCanvas = document.createElement("canvas");
+verifyCanvas.width = verifyCanvas.height = 256;
+const verifyCtx = verifyCanvas.getContext("2d", { willReadFrequently: true });
+
+function verifyFace(source, box) {
+  const side = 2.2 * Math.max(box[2], box[3]);
+  const cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
+  verifyCtx.setTransform(1, 0, 0, 1, 0, 0);
+  verifyCtx.fillStyle = "#808080";
+  verifyCtx.fillRect(0, 0, 256, 256);
+  verifyCtx.drawImage(source, cx - side / 2, cy - side / 2, side, side, 0, 0, 256, 256);
+  const result = state.landmarker.detect(verifyCanvas);
+  for (const lm of result.faceLandmarks) {
+    const xs = lm.map((p) => p.x), ys = lm.map((p) => p.y);
+    const w = Math.max(...xs) - Math.min(...xs), mx = (Math.max(...xs) + Math.min(...xs)) / 2;
+    const my = (Math.max(...ys) + Math.min(...ys)) / 2;
+    // the face we were asked about sits in the middle of the cut-out at about 1/2.2 of its size
+    if (Math.abs(mx - 0.5) < 0.2 && Math.abs(my - 0.5) < 0.22 && w > 0.2 && w < 0.85) {
+      const nose = lm[1], left = lm[263], right = lm[33];
+      const eyes = Math.hypot(left.x - right.x, left.y - right.y);
+      return { ok: true, yaw: (nose.x - (left.x + right.x) / 2) / Math.max(eyes, 1e-6) };
+    }
+  }
+  return { ok: false, yaw: 0 };
+}
+
+// Third opinion: the face gate, a small CNN trained to tell human faces from animals,
+// cartoons and emoji (scripts/train_gate.py). It looks at the same aligned crop as the
+// emotion model. Without web/models/gate.onnx this check is skipped.
+async function gatePasses(source, faces) {
+  if (!state.gate || !faces.length) return faces.map(() => true);
+  const g = state.gate, S = g.size, plane = S * S;
+  const data = new Float32Array(faces.length * plane);
+  faces.forEach((f, i) => {
+    const crop = extractFace(source, f.kp, g);
+    for (let j = 0; j < plane; j++) data[i * plane + j] = (crop[j] / 255 - g.mean) / g.std;
+  });
+  const out = await g.session.run({ input: new ort.Tensor("float32", data, [faces.length, 1, S, S]) });
+  return Array.from(out.logit.data, (z) => 1 / (1 + Math.exp(-z)) >= g.threshold);
+}
+
+// The detector looks at a 128 x 128 version of the picture, so a face that is small in a big
+// frame shrinks to a few pixels and is missed. Pictures are therefore also scanned in
+// overlapping square tiles at two scales (half and a quarter of the short side), where those
+// faces appear large. Used for photos and video analysis, where accuracy beats speed.
+function detectTiles(canvas, detector, scales = [0.5, 0.28]) {
+  const out = [...detector.detect(canvas).detections];
+  const W = canvas.width, H = canvas.height;
+  const tile = document.createElement("canvas");
+  const ctx = tile.getContext("2d");
+  for (const frac of scales) {
+    const t = Math.round(Math.min(W, H) * frac);
+    if (t < 140) continue;  // the tile itself would be tiny: nothing to gain
+    tile.width = tile.height = t;
+    const step = Math.round(t * 0.66);
+    const xs = [], ys = [];
+    for (let x = 0; x + t < W; x += step) xs.push(x);
+    for (let y = 0; y + t < H; y += step) ys.push(y);
+    xs.push(W - t);
+    ys.push(H - t);
+    for (const oy of ys) {
+      for (const ox of xs) {
+        ctx.drawImage(canvas, ox, oy, t, t, 0, 0, t, t);
+        for (const d of detector.detect(tile).detections) {
+          out.push({
+            ...d,
+            boundingBox: { ...d.boundingBox, originX: d.boundingBox.originX + ox, originY: d.boundingBox.originY + oy },
+            keypoints: d.keypoints.map((k) => ({ ...k, x: (k.x * t + ox) / W, y: (k.y * t + oy) / H })),
+          });
+        }
+      }
+    }
+  }
+  // merge duplicates found by several scans, keeping the most confident one
+  out.sort((p, q) => q.categories[0].score - p.categories[0].score);
+  const kept = [];
+  const box = (d) => [d.boundingBox.originX, d.boundingBox.originY, d.boundingBox.width, d.boundingBox.height];
+  for (const d of out) if (!kept.some((k) => iou(box(k), box(d)) > 0.35)) kept.push(d);
+  return kept;
+}
+
+// Photos: faces filling the whole picture are hard for the detector, so retry on a padded copy.
+function detectInImage(canvas, scales) {
+  const found = detectTiles(canvas, state.detectors.image, scales);
+  if (found.length) return found;
+  const pad = Math.round(0.25 * Math.max(canvas.width, canvas.height));
+  const padded = document.createElement("canvas");
+  padded.width = canvas.width + 2 * pad;
+  padded.height = canvas.height + 2 * pad;
+  const ctx = padded.getContext("2d");
+  ctx.fillStyle = "#808080";
+  ctx.fillRect(0, 0, padded.width, padded.height);
+  ctx.drawImage(canvas, pad, pad);
+  return state.detectors.image.detect(padded).detections.map((d) => ({
+    ...d,
+    boundingBox: { ...d.boundingBox, originX: d.boundingBox.originX - pad, originY: d.boundingBox.originY - pad },
+    keypoints: d.keypoints.map((k) => ({
+      ...k,
+      x: (k.x * padded.width - pad) / canvas.width,
+      y: (k.y * padded.height - pad) / canvas.height,
+    })),
+  }));
+}
+
+const isUnsure = (probs, yaw) => Math.max(...probs) < UNSURE_BELOW || Math.abs(yaw) > MAX_YAW;
+
+// ---------------------------------------------------------------- tracking + smoothing
+
+// Candidates are matched to the people already being tracked; each person keeps a running
+// average of their probabilities so a single noisy frame cannot flip the label.
+function assignTracks(faces, now) {
   const used = new Set();
-  faces.forEach((face, i) => {
+  for (const face of faces) {
     let best = null, bestIou = 0.3;
     for (const t of state.tracks) {
       const o = iou(t.box, face.box);
       if (!used.has(t) && o > bestIou) { best = t; bestIou = o; }
     }
-    if (best) {
-      const alpha = smooth ? 1 - Math.exp(-(now - best.seen) / SMOOTH_MS) : 1;
-      best.probs = best.probs.map((p, k) => p + alpha * (probs[i][k] - p));
-      best.box = face.box;
-      best.seen = now;
-    } else {
-      best = { id: state.nextId++, box: face.box, probs: probs[i].slice(), seen: now };
+    if (!best) {
+      best = { id: state.nextId++, hits: 0, probs: null };
       state.tracks.push(best);
     }
+    Object.assign(best, { box: face.box, hits: best.hits + 1 });
     used.add(best);
     face.track = best;
-  });
-  state.tracks = state.tracks.filter((t) => now - t.seen < TRACK_TTL_MS);
+  }
 }
 
 // ---------------------------------------------------------------- pipeline
 
-async function processFrame(source, width, height, detections, mirrored, smooth) {
+async function processFrame(source, width, height, detections, mirrored, smooth, live = true) {
   const now = performance.now();
-  const faces = detections
-    .filter((d) => d.categories[0].score >= MIN_SCORE && d.keypoints.length >= 4)
-    .map((d) => ({
-      box: [d.boundingBox.originX, d.boundingBox.originY, d.boundingBox.width, d.boundingBox.height],
-      kp: d.keypoints.slice(0, 4).map((k) => [k.x * width, k.y * height]),
-    }))
+  const candidates = toCandidates(detections, width, height);
+  assignTracks(candidates, now);
+  const toVerify = candidates.filter((f) => f.track.verifiedAt === undefined || now - f.track.verifiedAt > VERIFY_MS);
+  for (const f of toVerify) Object.assign(f.track, verifyFace(source, f.box), { verifiedAt: now });
+  const passed = toVerify.filter((f) => f.track.ok);
+  const gate = await gatePasses(source, passed);
+  passed.forEach((f, i) => { f.track.ok = gate[i]; });
+  for (const f of toVerify) f.track.verified = f.track.ok;
+  // shown = verified faces; live faces must also have been seen in a couple of frames
+  const faces = candidates
+    .filter((f) => f.track.verified && (!live || f.track.hits >= MIN_HITS))
     .sort((p, q) => q.box[2] * q.box[3] - p.box[2] * p.box[3])
     .slice(0, MAX_FACES);
+  state.rejected = candidates.filter((f) => !f.track.verified).length;
+
   const model = state.model;
   let crops = [], mainProbs = null;
   if (faces.length) {
     crops = faces.map((f) => extractFace(source, f.kp, model));
     const probs = await classify(crops, model);
     if (model !== state.model) return;  // the user switched models meanwhile
-    track(faces, probs, now, smooth);
+    faces.forEach((f, i) => {
+      const t = f.track;
+      const alpha = smooth && t.probs ? 1 - Math.exp(-(now - t.seen) / SMOOTH_MS) : 1;
+      t.probs = t.probs ? t.probs.map((p, k) => p + alpha * (probs[i][k] - p)) : probs[i].slice();
+      t.seen = now;
+      t.unsure = isUnsure(t.probs, t.yaw);
+    });
     mainProbs = probs[0];  // largest face, unsmoothed: games need the fastest reaction
-  } else {
-    state.tracks = state.tracks.filter((t) => now - t.seen < TRACK_TTL_MS);
   }
+  for (const f of candidates) f.track.seenAny = now;
+  state.tracks = state.tracks.filter((t) => now - (t.seenAny ?? now) < TRACK_TTL_MS);
   state.faces = faces.length;
   if (state.mode === "camera") {
     window.dispatchEvent(new CustomEvent("emotion", { detail: {
@@ -226,6 +376,7 @@ async function processFrame(source, width, height, detections, mirrored, smooth)
   }
   if (source === ui.video || source === ui.still) drawOverlay(faces, width, height, mirrored);
   renderPanel(faces[0]?.track, faces.length);
+  renderPeople(faces);
   renderCrops(crops, model.size);
   tickFps(now);
 }
@@ -247,30 +398,6 @@ async function cameraLoop(id) {
   else requestAnimationFrame(() => cameraLoop(id));
 }
 
-// Photos: faces filling the whole picture are hard for the detector, so retry on a padded copy.
-function detectInImage(canvas) {
-  let result = state.detectors.image.detect(canvas);
-  if (result.detections.length) return result.detections;
-  const pad = Math.round(0.25 * Math.max(canvas.width, canvas.height));
-  const padded = document.createElement("canvas");
-  padded.width = canvas.width + 2 * pad;
-  padded.height = canvas.height + 2 * pad;
-  const ctx = padded.getContext("2d");
-  ctx.fillStyle = "#808080";
-  ctx.fillRect(0, 0, padded.width, padded.height);
-  ctx.drawImage(canvas, pad, pad);
-  result = state.detectors.image.detect(padded);
-  return result.detections.map((d) => ({
-    ...d,
-    boundingBox: { ...d.boundingBox, originX: d.boundingBox.originX - pad, originY: d.boundingBox.originY - pad },
-    keypoints: d.keypoints.map((k) => ({
-      ...k,
-      x: (k.x * padded.width - pad) / canvas.width,
-      y: (k.y * padded.height - pad) / canvas.height,
-    })),
-  }));
-}
-
 async function runPhoto(bitmap = state.photo) {
   if (!bitmap) return;
   state.photo = bitmap;
@@ -280,7 +407,26 @@ async function runPhoto(bitmap = state.photo) {
   c.getContext("2d").drawImage(bitmap, 0, 0);
   setAspect(bitmap.width, bitmap.height);
   state.tracks = [];
-  await processFrame(c, c.width, c.height, detectInImage(c), false, false);
+  await processFrame(c, c.width, c.height, detectInImage(c), false, false, false);
+}
+
+// For video analysis (video.js): every verified face in one still frame, with its probabilities.
+// thorough = also scan small tiles (finds far-away faces, ~4x slower).
+async function analyzeStill(canvas, { thorough = true } = {}) {
+  const scales = thorough ? [0.5, 0.28] : [0.5];
+  const candidates = toCandidates(detectInImage(canvas, scales), canvas.width, canvas.height);
+  let faces = [];
+  for (const f of candidates) {
+    const v = verifyFace(canvas, f.box);
+    if (v.ok) faces.push({ ...f, yaw: v.yaw });
+  }
+  const gate = await gatePasses(canvas, faces);
+  faces = faces.filter((_, i) => gate[i]);
+  const rejected = candidates.length - faces.length;
+  if (!faces.length) return { faces, rejected };
+  const probs = await classify(faces.map((f) => extractFace(canvas, f.kp, state.model)), state.model);
+  faces.forEach((f, i) => { f.probs = probs[i]; f.unsure = isUnsure(probs[i], f.yaw); });
+  return { faces, rejected };
 }
 
 // ---------------------------------------------------------------- drawing
@@ -315,7 +461,8 @@ function drawOverlay(faces, width, height, mirrored) {
     ctx.stroke();
 
     const p = face.track.probs, top = p.indexOf(Math.max(...p));
-    const label = `${emoji[top]} ${emotions[top]} ${Math.round(p[top] * 100)}%`;
+    const who = faces.length > 1 ? `#${personNumber(face.track)} ` : "";
+    const label = face.track.unsure ? `${who}❔ unsure` : `${who}${emoji[top]} ${emotions[top]} ${Math.round(p[top] * 100)}%`;
     ctx.font = "600 15px -apple-system, BlinkMacSystemFont, Inter, sans-serif";
     const tw = ctx.measureText(label).width + 20, th = 28;
     const ly = y - th - 8 >= 0 ? y - th - 8 : y + 8;
@@ -359,9 +506,40 @@ function renderPanel(track, nFaces) {
     li.querySelector(".fill").style.width = `${(p[i] * 100).toFixed(1)}%`;
     li.querySelector(".value").textContent = `${Math.round(p[i] * 100)}%`;
   });
-  const others = nFaces > 1 ? ` · largest of ${nFaces} faces` : "";
-  ui.verdict.innerHTML = `<div class="verdict-emoji">${emoji[top]}</div><div><div class="verdict-label">${emotions[top]}</div>` +
-    `<div class="verdict-sub">${Math.round(p[top] * 100)}% confident · ${state.model.version}${others}</div></div>`;
+  const others = nFaces > 1 ? ` · person #${personNumber(track)}, largest of ${nFaces}` : "";
+  const unsure = track.unsure ? " · unsure (head turned or unclear)" : "";
+  ui.verdict.innerHTML = `<div class="verdict-emoji">${track.unsure ? "❔" : emoji[top]}</div><div>` +
+    `<div class="verdict-label">${emotions[top]}</div>` +
+    `<div class="verdict-sub">${Math.round(p[top] * 100)}% confident · ${state.model.version}${others}${unsure}</div></div>`;
+}
+
+// Stable, small person numbers (1, 2, 3 …) for the tracks currently on screen.
+function personNumber(track) {
+  if (!state.personIds) state.personIds = new Map();
+  if (!state.personIds.has(track.id)) {
+    const used = new Set(state.tracks.filter((t) => state.personIds.has(t.id)).map((t) => state.personIds.get(t.id)));
+    let n = 1;
+    while (used.has(n)) n++;
+    state.personIds.set(track.id, n);
+  }
+  return state.personIds.get(track.id);
+}
+
+// With more than one person on screen, list everyone with their current emotion.
+function renderPeople(faces) {
+  const { emotions, emoji } = state.manifest;
+  ui.people.hidden = faces.length < 2;
+  if (faces.length < 2) return;
+  ui.people.innerHTML = `<div class="crops-title">Everyone on screen</div>` + faces
+    .map((f) => [personNumber(f.track), f.track])
+    .sort((p, q) => p[0] - q[0])
+    .map(([n, t]) => {
+      const top = t.probs.indexOf(Math.max(...t.probs));
+      return `<div class="person"><span class="person-n">#${n}</span>` +
+        `<span class="person-e">${t.unsure ? "❔" : emoji[top]}</span>` +
+        `<span class="person-l">${t.unsure ? "unsure" : emotions[top]}</span>` +
+        `<span class="person-v">${t.unsure ? "" : Math.round(t.probs[top] * 100) + "%"}</span></div>`;
+    }).join("");
 }
 
 function renderCrops(crops, size) {
@@ -390,6 +568,7 @@ function updateStats() {
   if (state.mode === "camera") parts.push(`${state.fps.toFixed(0)} fps`);
   if (state.inferMs) parts.push(`model ${state.inferMs.toFixed(1)} ms`);
   parts.push(`${state.faces} face${state.faces === 1 ? "" : "s"}`);
+  if (state.rejected) parts.push(`${state.rejected} ignored (not a face)`);
   ui.stats.textContent = parts.join(" · ");
 }
 
@@ -581,6 +760,19 @@ async function init() {
   });
   state.detectors.video = await FaceDetector.createFromOptions(vision, options("VIDEO"));
   state.detectors.image = await FaceDetector.createFromOptions(vision, options("IMAGE"));
+  state.landmarker = await FaceLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: LANDMARKER_MODEL, delegate: "GPU" },
+    runningMode: "IMAGE", numFaces: 3, minFaceDetectionConfidence: 0.5, minFacePresenceConfidence: 0.5,
+  });
+  if (state.manifest.gate) {
+    try {
+      const session = await ort.InferenceSession.create(state.manifest.gate.file, {
+        executionProviders: navigator.gpu ? ["webgpu", "wasm"] : ["wasm"] });
+      state.gate = { ...state.manifest.gate, session };
+    } catch (err) {
+      console.warn("face gate not loaded, continuing without it", err);
+    }
+  }
   await selectModel(state.manifest.default);
   ui.camera.disabled = false;
 }
@@ -589,6 +781,7 @@ async function init() {
 window.emotionDetecter = {
   state, fitSimilarity, extractFace, selectModel,
   startCamera: (target) => startCamera(target),
+  analyzeStill,
   stopCamera: () => stopCamera(),
   get stream() { return state.stream; },
   get ready() { return !ui.camera.disabled; },

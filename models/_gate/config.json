@@ -1,0 +1,8 @@
+{
+  "size": 64,
+  "mean": 0.5,
+  "std": 0.25,
+  "threshold": 0.2164616584777832,
+  "width": 16,
+  "template": "canonical"
+}

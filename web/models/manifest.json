@@ -257,5 +257,30 @@
       "file": "assets/alignment.png",
       "caption": "Every face is aligned the same way in training and live"
     }
-  ]
+  ],
+  "gate": {
+    "file": "models/gate.onnx",
+    "size": 64,
+    "mean": 0.5,
+    "std": 0.25,
+    "threshold": 0.2164616584777832,
+    "template": [
+      [
+        17.894,
+        21.421
+      ],
+      [
+        44.998,
+        21.024
+      ],
+      [
+        31.482,
+        35.565
+      ],
+      [
+        31.77,
+        49.158
+      ]
+    ]
+  }
 }

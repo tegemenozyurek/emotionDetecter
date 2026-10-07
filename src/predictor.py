@@ -40,7 +40,9 @@ def _overlap(a, b):
 
 def available_models():
     """Model versions that have trained weights, e.g. ['eD0.1', 'eD0.5'] (oldest first)."""
-    versions = [d.name for d in (ROOT / "models").iterdir() if (d / "model.pt").exists()]
+    # folders starting with "_" (teachers, the face gate) are internal, not app models
+    versions = [d.name for d in (ROOT / "models").iterdir()
+                if (d / "model.pt").exists() and not d.name.startswith("_")]
     def order(v):  # eD0.1 < eD0.5 < eD0.7 < eDv1.0 < eDv1.1 ...
         numbers = [int(n) for n in v.removeprefix("eD").lstrip("v").split(".") if n.isdigit()]
         return ("v" in v, numbers)

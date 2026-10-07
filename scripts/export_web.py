@@ -94,6 +94,12 @@ def main():
 
     manifest = {"emotions": EMOTIONS, "emoji": [EMOJI[e] for e in EMOTIONS],
                 "default": versions[-1], "models": entries, "about": about, "charts": charts}
+    gate_dir = ROOT / "models" / "_gate"
+    if (gate_dir / "config.json").exists() and (OUT / "gate.onnx").exists():
+        g = json.loads((gate_dir / "config.json").read_text())
+        templates = json.loads((ROOT / "models" / "alignment.json").read_text())
+        manifest["gate"] = {"file": "models/gate.onnx", "size": g["size"], "mean": g["mean"], "std": g["std"],
+                            "threshold": g["threshold"], "template": templates["canonical"]["points"]}
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     print(f"Saved {(OUT / 'manifest.json').relative_to(ROOT)}")
 

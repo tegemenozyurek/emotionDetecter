@@ -6,7 +6,7 @@
 <title>emotionDetecter · live</title>
 <meta name="description" content="Real-time facial emotion recognition that runs entirely in your browser. Video never leaves your device.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="top">
@@ -54,6 +54,7 @@
       </div>
     </div>
     <ul class="bars" id="bars"></ul>
+    <div class="people" id="people" hidden></div>
     <div class="crops" id="crops" hidden>
       <div class="crops-title">What the model sees</div>
       <div class="crops-row" id="cropsRow"></div>
@@ -100,6 +101,32 @@
   </div>
 </section>
 
+<section class="games" id="video-analysis">
+  <div class="games-head"><h2>Video analysis</h2></div>
+  <div class="game card active">
+    <p class="game-intro">Pick a video from your device. Every person in it is tracked and you get how long each one
+      showed each emotion, with a timeline. The video is analysed in this tab and never uploaded.</p>
+    <div class="va-controls">
+      <label class="btn" for="vaFile">Choose a video</label>
+      <input type="file" id="vaFile" accept="video/*" hidden>
+      <label class="va-opt">Frames per second
+        <select id="vaRate"><option value="2">2 (fast)</option><option value="5" selected>5</option><option value="10">10 (detailed)</option></select>
+      </label>
+      <label class="switch"><input type="checkbox" id="vaThorough"><span></span>Find small, far-away faces (slower)</label>
+      <button class="btn primary" id="vaAnalyze" disabled>Analyse</button>
+    </div>
+    <div class="va-progress"><span id="vaProgress"></span></div>
+    <div class="game-hint va-status" id="vaStatus">No video chosen yet.</div>
+    <video id="vaPreview" class="va-preview" controls playsinline hidden></video>
+    <div class="va-legend" id="vaLegend" hidden></div>
+    <div class="va-results" id="vaResults"></div>
+    <div class="va-export" id="vaExport" hidden>
+      <button class="btn" id="vaCsv">Download CSV (every frame)</button>
+      <button class="btn" id="vaJson">Download JSON (summary)</button>
+    </div>
+  </div>
+</section>
+
 <section class="about" id="about">
   <details class="fold">
   <summary><span>How it works</span><span class="chev" aria-hidden="true">›</span></summary>
@@ -125,7 +152,8 @@
   Predictions are a model's guess about a facial expression, not a judgement of how someone feels.</p>
 </footer>
 
-<script type="module" src="app.js?v=10"></script>
-<script type="module" src="games.js?v=10"></script>
+<script type="module" src="app.js?v=11"></script>
+<script type="module" src="games.js?v=11"></script>
+<script type="module" src="video.js?v=11"></script>
 </body>
 </html>

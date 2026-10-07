@@ -69,8 +69,8 @@ window.trySettings = async (paths, settings) => {
 
 // Full run over the manifest; results are POSTed to the server in batches.
 window.progress = { done: 0, ok: 0, total: 0, running: false };
-window.runAll = async (settingsByPrefix) => {
-  const paths = await (await fetch("/manifest.json")).json();
+window.runAll = async (settingsByPrefix, kind = "faces") => {
+  const paths = await (await fetch(`/manifest.json?${kind}`)).json();
   Object.assign(window.progress, { done: 0, ok: 0, total: paths.length, running: true, started: Date.now() });
   let batch = [];
   for (const path of paths) {
@@ -80,12 +80,12 @@ window.runAll = async (settingsByPrefix) => {
     window.progress.done++;
     window.progress.ok += row.ok ? 1 : 0;
     if (batch.length === 500) {
-      await fetch("/results", { method: "POST", body: JSON.stringify(batch) });
+      await fetch(`/results?${kind}`, { method: "POST", body: JSON.stringify(batch) });
       batch = [];
       status.textContent = `${window.progress.done} / ${paths.length} images, ${window.progress.ok} faces found`;
     }
   }
-  if (batch.length) await fetch("/results", { method: "POST", body: JSON.stringify(batch) });
+  if (batch.length) await fetch(`/results?${kind}`, { method: "POST", body: JSON.stringify(batch) });
   window.progress.running = false;
   status.textContent = `Done: ${window.progress.done} images, ${window.progress.ok} faces found`;
   return window.progress;

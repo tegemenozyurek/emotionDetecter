@@ -16,6 +16,7 @@ Splits
 
 Output: data/processed/v1.npz
 """
+import argparse
 import importlib.util
 import sys
 from collections import Counter
@@ -54,7 +55,12 @@ def fer_soft_label(v):
 
 
 def main():
-    faces = np.load(FACES)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--size", type=int, default=64, help="face size; 96 reads faces_96.npz, writes v1_96.npz")
+    size = parser.parse_args().size
+    faces_path = FACES if size == 64 else FACES.with_name(f"faces_{size}.npz")
+    out = OUT if size == 64 else OUT.with_name(f"v1_{size}.npz")
+    faces = np.load(faces_path)
     index = {p: i for i, p in enumerate(faces["paths"])}
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -142,11 +148,11 @@ def main():
         print(f"{e:<9} {train_votes[i]:>7,.0f} {before[i]:>9,}")
     print(f"\nPixel mean/std on aligned train faces: {mean:.4f} / {std:.4f}")
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(OUT, X=X, X48=X48, soft=soft, hard=hard, source=source, split=split,
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(out, X=X, X48=X48, soft=soft, hard=hard, source=source, split=split,
                         paths=faces["paths"][idx], mean=np.float32(mean), std=np.float32(std),
                         emotions=np.array(EMOTIONS))
-    print(f"Saved {OUT.relative_to(ROOT)} ({OUT.stat().st_size / 1e6:.0f} MB)")
+    print(f"Saved {out.relative_to(ROOT)} ({out.stat().st_size / 1e6:.0f} MB)")
 
 
 if __name__ == "__main__":

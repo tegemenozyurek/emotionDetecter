@@ -204,3 +204,35 @@ footer { color: var(--muted); font-size: 13px; padding: 22px 0 32px; text-align:
 .actor-scores .bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #06b6d4); }
 .actor-scores b { text-align: right; font-variant-numeric: tabular-nums; }
 .actor-best { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+/* everyone on screen */
+.people { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); display: grid; gap: 6px; }
+.person { display: grid; grid-template-columns: 30px 24px 1fr auto; align-items: center; gap: 6px; font-size: 13.5px; }
+.person-n { font: 700 12px/1 ui-monospace, Menlo, monospace; color: var(--muted); }
+.person-l { text-transform: capitalize; }
+.person-v { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* video analysis */
+.va-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.va-opt { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.va-opt select { background: var(--card-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font: inherit; }
+.va-progress { height: 6px; border-radius: 999px; background: var(--card-2); overflow: hidden; margin-top: 14px; }
+.va-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8b5cf6, #06b6d4); transition: width .2s; }
+.va-status { color: var(--muted); margin-top: 8px; }
+.va-preview { width: 100%; max-height: 360px; border-radius: 12px; background: #05070f; margin-top: 12px; }
+.va-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; font-size: 12.5px; color: var(--muted); text-transform: capitalize; }
+.va-legend i, .va-table i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.va-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.va-person { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--card-2); display: grid; gap: 10px; }
+.va-head { display: flex; align-items: center; gap: 12px; }
+.va-head img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; }
+.va-name { font-weight: 700; }
+.va-sub { font-size: 13px; color: var(--muted); }
+.va-sub b { color: var(--text); text-transform: capitalize; }
+.va-stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.va-stack span { display: block; height: 100%; }
+.va-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.va-table td { padding: 3px 0; text-transform: capitalize; }
+.va-table td:not(:first-child) { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.va-timeline { width: 100%; height: 18px; border-radius: 6px; cursor: pointer; display: block; }
+.va-export { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }

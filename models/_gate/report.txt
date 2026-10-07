@@ -1,0 +1,10 @@
+Face gate | threshold 0.216 (keeps 99.5% of human faces on validation)
+
+  human    (all)              5173  kept 99.50%
+  human    (detector fired)   5173  kept 99.50%
+  animal   (all)              1640  wrongly kept 0.73%
+  animal   (detector fired)    918  wrongly kept 1.31%
+  cartoon  (all)               989  wrongly kept 0.00%
+  cartoon  (detector fired)    964  wrongly kept 0.00%
+  emoji    (all)               303  wrongly kept 0.00%
+  emoji    (detector fired)    224  wrongly kept 0.00%

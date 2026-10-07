@@ -15,6 +15,7 @@ Outputs:
   models/alignment.json         both templates, used by the web app
   assets/v1/alignment.png       before / after examples
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -48,6 +49,12 @@ def load_keypoints():
 
 
 def main():
+    global SIZE, OUT
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--size", type=int, default=SIZE, help="output face size (templates are defined at 64)")
+    size = parser.parse_args().size
+    if size != SIZE:
+        OUT = OUT.with_name(f"faces_{size}.npz")
     rows = load_keypoints()
     paths = sorted(rows)
     print(f"{len(paths):,} images with detector output")
@@ -68,15 +75,16 @@ def main():
     raf_template = np.median(kps[good & is_raf][:, KEYPOINTS], axis=0)          # in 100x100 px
     fer_template = np.median(kps[good & ~is_raf][:, KEYPOINTS], axis=0)         # in 48x48 px
     canonical = raf_template * SIZE / 100.0
+    target = canonical * size / SIZE  # same framing, more pixels
     print("canonical template (64x64):", np.round(canonical, 1).tolist())
     print("FER template (48x48):      ", np.round(fer_template, 1).tolist())
 
-    aligned = np.zeros((len(paths), SIZE, SIZE), np.uint8)
+    aligned = np.zeros((len(paths), size, size), np.uint8)
     fer_framed = np.zeros((len(paths), FER_SIZE, FER_SIZE), np.uint8)
     for i, (img, kp) in enumerate(zip(images, kps)):
         # Faces the detector missed fall back to their dataset's average framing.
         src = kp[KEYPOINTS] if good[i] else (raf_template if is_raf[i] else fer_template)
-        aligned[i] = cv2.warpAffine(img, fit_similarity(src, canonical), (SIZE, SIZE),
+        aligned[i] = cv2.warpAffine(img, fit_similarity(src, target), (size, size),
                                     flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
         if is_raf[i]:
             fer_framed[i] = cv2.warpAffine(img, fit_similarity(src, fer_template), (FER_SIZE, FER_SIZE),
@@ -90,6 +98,9 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(OUT, paths=np.array(paths), aligned=aligned, fer_framed=fer_framed,
                         keypoints_ok=good, is_raf=is_raf)
+    if size != SIZE:  # templates and figures belong to the 64 px run
+        print(f"Saved {OUT.relative_to(ROOT)}")
+        return
     TEMPLATES.write_text(json.dumps({
         "keypoints": ["right eye", "left eye", "nose tip", "mouth center"],
         "canonical": {"size": SIZE, "points": np.round(canonical, 3).tolist()},
