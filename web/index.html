@@ -62,13 +62,15 @@
 </main>
 
 <section class="about" id="about">
-  <h2>How it works</h2>
+  <details class="how">
+  <summary><h2>How it works</h2></summary>
   <ol class="pipeline">
     <li><b>Detect</b><span>MediaPipe finds faces, eyes, nose and mouth</span></li>
     <li><b>Align</b><span>each face is rotated and scaled onto one template</span></li>
     <li><b>Classify</b><span>a CNN trained from scratch scores 7 emotions</span></li>
     <li><b>Smooth</b><span>faces are tracked and their scores averaged over time</span></li>
   </ol>
+  </details>
 
   <h2>Models</h2>
   <div class="model-cards" id="modelCards"></div>

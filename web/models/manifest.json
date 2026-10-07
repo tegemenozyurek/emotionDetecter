@@ -20,6 +20,78 @@
   "default": "eDv1.0",
   "models": [
     {
+      "version": "eD0.1",
+      "file": "models/eD0.1.onnx",
+      "size": 48,
+      "template": [
+        [
+          14.93,
+          19.13
+        ],
+        [
+          32.66,
+          18.83
+        ],
+        [
+          23.99,
+          28.73
+        ],
+        [
+          24.11,
+          37.32
+        ]
+      ],
+      "mean": 0.50785,
+      "std": 0.255,
+      "tagline": "Baseline",
+      "changes": [
+        "VGG-style CNN trained from scratch",
+        "Original FER-2013 labels",
+        "No augmentation · 40 epochs"
+      ],
+      "train_images": 25837,
+      "dataset": "FER-2013",
+      "test_ferplus": 0.6679999999999999,
+      "test_rafdb": 0.604,
+      "webcam": 0.278
+    },
+    {
+      "version": "eD0.5",
+      "file": "models/eD0.5.onnx",
+      "size": 48,
+      "template": [
+        [
+          14.93,
+          19.13
+        ],
+        [
+          32.66,
+          18.83
+        ],
+        [
+          23.99,
+          28.73
+        ],
+        [
+          24.11,
+          37.32
+        ]
+      ],
+      "mean": 0.50785,
+      "std": 0.255,
+      "tagline": "Augmented",
+      "changes": [
+        "+ flip / rotate / shift / zoom / erase augmentation",
+        "Stays accurate on tilted & covered faces",
+        "Original FER-2013 labels · 60 epochs"
+      ],
+      "train_images": 25837,
+      "dataset": "FER-2013",
+      "test_ferplus": 0.7340000000000001,
+      "test_rafdb": 0.62,
+      "webcam": 0.314
+    },
+    {
       "version": "eD0.7",
       "file": "models/eD0.7.onnx",
       "size": 48,
@@ -108,7 +180,7 @@
       "test_ferplus": 0.6679999999999999,
       "test_rafdb": 0.604,
       "webcam": 0.278,
-      "live": false
+      "live": true
     },
     {
       "version": "eD0.5",
@@ -124,7 +196,7 @@
       "test_ferplus": 0.7340000000000001,
       "test_rafdb": 0.62,
       "webcam": 0.314,
-      "live": false
+      "live": true
     },
     {
       "version": "eD0.7",

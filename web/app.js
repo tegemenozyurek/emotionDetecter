@@ -484,7 +484,7 @@ function renderAbout() {
     if (m.train_time) tip.push("", `Training time: ${m.train_time} on an Apple M4 GPU`);
     card.dataset.tip = tip.join("\n");
     card.innerHTML = `<div class="mcard-head"><span class="mcard-name">${m.version}</span>` +
-      (m.live ? `<span class="badge">live</span>` : "") + `</div>` +
+      (m.version === state.manifest.default ? `<span class="badge">default</span>` : "") + `</div>` +
       `<div class="mcard-metrics">` +
       `<div><b>${pct(m.test_ferplus)}</b><span>FER+ test</span></div>` +
       `<div><b>${pct(m.test_rafdb)}</b><span>RAF-DB test</span></div>` +

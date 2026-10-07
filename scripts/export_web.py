@@ -6,7 +6,7 @@ scripts/align_faces.py). Everything the app needs is written to
 web/models/manifest.json.
 
 Usage:
-  python scripts/export_web.py                 # eD0.7 and every eDv model
+  python scripts/export_web.py                 # every model version
   python scripts/export_web.py eD0.5 eDv1.0
 """
 import json
@@ -44,7 +44,7 @@ def load(version):
 
 
 def main():
-    versions = sys.argv[1:] or [v for v in available_models() if v == "eD0.7" or v.startswith("eDv")]
+    versions = sys.argv[1:] or available_models()
     OUT.mkdir(parents=True, exist_ok=True)
     entries = []
     for v in versions:
