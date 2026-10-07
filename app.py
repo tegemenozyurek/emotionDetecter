@@ -61,6 +61,10 @@ def pct(x):
     return "—" if x is None else f"{x:.1%}"
 
 
+def kimages(n):
+    return "—" if not n else f"{n / 1000:.1f}k"
+
+
 def model_cards():
     infos = [model_info.load(v) for v in MODELS]
     best = max((i.test_ferplus or 0) for i in infos)
@@ -76,6 +80,7 @@ def model_cards():
             <div><div class='metric'>{pct(i.test_ferplus)}</div><div class='metric-label'>FER+ test</div></div>
             <div><div class='metric'>{pct(i.distorted)}</div><div class='metric-label'>distorted</div></div>
             <div><div class='metric'>{pct(i.best_val)}</div><div class='metric-label'>best val</div></div>
+            <div><div class='metric'>{kimages(i.train_images)}</div><div class='metric-label'>train images</div></div>
           </div>
         </div>""")
     return f"<div class='cards'>{''.join(cards)}</div>"
@@ -84,6 +89,8 @@ def model_cards():
 def comparison_table():
     infos = [model_info.load(v) for v in MODELS]
     rows = [
+        ("Training images", lambda i: f"{i.train_images:,}" if i.train_images else "—"),
+        ("Training data", lambda i: i.dataset),
         ("Epochs", lambda i: f"{i.epochs_done}/{i.config.get('epochs', '?')}"),
         ("Best validation", lambda i: pct(i.best_val)),
         ("Test · original labels", lambda i: pct(i.test_original)),
@@ -181,9 +188,9 @@ CSS = """
   background: rgb(124 58 237 / .12); color: #7c3aed; }
 .pill-best { background: rgb(16 185 129 / .14); color: #059669; }
 .pill-live { background: rgb(245 158 11 / .16); color: #b45309; }
-.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px;
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px;
   padding-top: 12px; border-top: 1px solid var(--border-color-primary); }
-.metric { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.metric { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .metric-label { font-size: .72rem; color: var(--body-text-color-subdued); text-transform: uppercase; letter-spacing: .04em; }
 
 .cmp { width: 100%; border-collapse: collapse; font-size: .92rem; border: none !important; }

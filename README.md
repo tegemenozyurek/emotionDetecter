@@ -14,11 +14,13 @@
 
 Three versions of the same network, tested on the same 6,323 faces ([FER+](https://github.com/microsoft/FERPlus) labels):
 
-| model | what changed | test accuracy | tilted / covered faces |
-|---|---|---:|---:|
-| `eD0.1` | baseline | 66.8% | 58.9% |
-| `eD0.5` | + data augmentation | 73.4% | 69.8% |
-| `eD0.7` | + cleaner labels | **80.1%** | **77.5%** |
+| model | what changed | trained on | test accuracy | tilted / covered faces |
+|---|---|---|---:|---:|
+| `eD0.1` | baseline | 25,837 FER-2013 images | 66.8% | 58.9% |
+| `eD0.5` | + data augmentation | 25,837 FER-2013 images | 73.4% | 69.8% |
+| `eD0.7` | + cleaner labels | 22,447 FER+ images | **80.1%** | **77.5%** |
+
+Every model also holds out a validation set (2,872 images for `eD0.1`/`eD0.5`, 2,494 for `eD0.7`) to choose its best epoch; the test faces are never used for training.
 
 ![Robustness](assets/robustness_ferplus.png)
 
@@ -26,9 +28,9 @@ Three versions of the same network, tested on the same 6,323 faces ([FER+](https
 
 All three use the same 4.8M-parameter CNN. Only the **training data** changes:
 
-- **`eD0.1`: baseline.** Trained on the raw FER-2013 dataset. It memorized the training faces (87% train vs 64% validation) and struggles with tilted or off-centre faces.
-- **`eD0.5`: data augmentation.** Every training image is randomly flipped, rotated, shifted, zoomed and partly hidden. The model can no longer memorize, so it learns the expression itself: **+6.6 points**.
-- **`eD0.7`: cleaner labels.** About a third of FER-2013's labels are wrong. Same recipe as `eD0.5`, but trained on [FER+](https://github.com/microsoft/FERPlus) labels, where 10 people voted on every image: **another +6.7 points**. This is the default model in the app.
+- **`eD0.1`: baseline.** Trained on 25,837 images of the raw FER-2013 dataset. It memorized the training faces (87% train vs 64% validation) and struggles with tilted or off-centre faces.
+- **`eD0.5`: data augmentation.** Same 25,837 images, but every training image is randomly flipped, rotated, shifted, zoomed and partly hidden. The model can no longer memorize, so it learns the expression itself: **+6.6 points**.
+- **`eD0.7`: cleaner labels.** About a third of FER-2013's labels are wrong. Same recipe as `eD0.5`, but trained on [FER+](https://github.com/microsoft/FERPlus) labels, where 10 people voted on every image. Images the voters could not agree on are dropped, which leaves 22,447 training images, fewer than before but cleaner: **another +6.7 points**. This is the default model in the app.
 
 The biggest gain is on **neutral** faces. The old labels often called calm faces *sad* or *fear*, so the older models refused to say *neutral* (49% recall). `eD0.7` gets 83%.
 

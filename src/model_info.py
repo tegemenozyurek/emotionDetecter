@@ -28,6 +28,8 @@ DESCRIPTIONS = {
 }
 
 EPOCH_LINE = re.compile(r"^\s*(\d+)\s+([\d.]+)\s+([\d.]+)%\s+([\d.]+)\s+([\d.]+)%")
+SIZE_LINE = re.compile(r"([\d,]+) train / ([\d,]+) val images")
+DATASETS = {"fer2013": "FER-2013", "ferplus": "FER+", "v1": "FER+ + RAF-DB"}
 
 
 @dataclass
@@ -40,6 +42,8 @@ class ModelInfo:
     test_original: float | None = None   # test accuracy on original FER-2013 labels
     test_ferplus: float | None = None    # test accuracy on FER+ labels
     distorted: float | None = None       # FER+ test accuracy with all distortions combined
+    train_images: int | None = None      # images the model learned from
+    val_images: int | None = None        # images held out to pick the best epoch
 
     @property
     def epochs_done(self):
@@ -50,11 +54,17 @@ class ModelInfo:
         return self.epochs_done < self.config.get("epochs", 0)
 
     @property
+    def dataset(self):
+        return DATASETS.get(self.config.get("data", "fer2013"), self.config.get("data"))
+
+    @property
     def best_val(self):
         return max((v for _, _, v in self.history), default=None)
 
     def tooltip(self):
         lines = [f"{self.version} · {self.tagline}", *self.changes, ""]
+        if self.train_images:
+            lines.append(f"Trained on {self.train_images:,} images ({self.dataset})")
         if self.training:
             lines.append(f"⏳ training: epoch {self.epochs_done}/{self.config.get('epochs')}")
         if self.test_ferplus is not None:
@@ -91,6 +101,9 @@ def load(version):
         info.config = json.loads((folder / "config.json").read_text())
     if (folder / "train_log.txt").exists():
         for line in (folder / "train_log.txt").read_text().splitlines():
+            size = SIZE_LINE.search(line)
+            if size and info.train_images is None:
+                info.train_images, info.val_images = (int(g.replace(",", "")) for g in size.groups())
             m = EPOCH_LINE.match(line)
             if m:
                 info.history.append((int(m.group(1)), float(m.group(3)) / 100, float(m.group(5)) / 100))
