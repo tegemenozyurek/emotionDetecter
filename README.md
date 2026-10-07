@@ -2,11 +2,15 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![Web demo](https://img.shields.io/badge/demo-in--browser-8B5CF6?logo=webgpu&logoColor=white)](web/)
+[![Live demo](https://img.shields.io/badge/live%20demo-open-8B5CF6?logo=googlechrome&logoColor=white)](https://tegemenozyurek.github.io/emotionDetecter/)
 [![Dataset](https://img.shields.io/badge/data-FER%2B%20%2B%20RAF--DB-20BEFF?logo=kaggle&logoColor=white)](https://github.com/microsoft/FERPlus)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Real-time facial emotion recognition with CNNs trained from scratch.** Turn on your webcam or drop a photo: every face is found, aligned and classified as angry, disgusted, afraid, happy, neutral, sad or surprised, entirely in your browser.
+
+### ▶ [Try it live in your browser](https://tegemenozyurek.github.io/emotionDetecter/)
+
+Nothing to install. Your camera feed never leaves your device: face detection and the model both run locally in the browser (Chrome or Edge recommended for WebGPU).
 
 ![Showcase](assets/showcase.png)
 
@@ -58,7 +62,7 @@ The biggest gains are on the rare emotions and on real-world faces:
 
 ## Quickstart
 
-The trained models are included, so the demo runs without downloading any dataset:
+Or run the same demo locally. The trained models are included, so no dataset is needed:
 
 ```bash
 git clone https://github.com/tegemenozyurek/emotionDetecter.git
