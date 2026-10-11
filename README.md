@@ -12,6 +12,10 @@
 
 Nothing to install. Your camera feed never leaves your device: face detection and the model both run locally in the browser (Chrome or Edge recommended for WebGPU).
 
+- **Live webcam or photo.** Every person on screen gets a number and their own label.
+- **Video analysis.** Pick a video and see how long each person showed each emotion, with a timeline and CSV / JSON export.
+- **Games.** *Reaction Dino*: smile to jump, look surprised to duck. *Actor Game*: act 5 emotions and the model scores how convincing you were.
+
 ![Showcase](assets/showcase.png)
 
 ## Results
@@ -72,6 +76,12 @@ python3 -m http.server -d web 8000      # then open http://localhost:8000
 
 The web app ([`web/`](web/)) runs entirely in the browser: MediaPipe finds the faces, each face is aligned, and the model runs with ONNX Runtime Web on the GPU (WebGPU, about 7 ms per face, with a WASM fallback). Faces are tracked between frames and their scores smoothed, so the label does not flicker. No image or video leaves your device. Hover a model name to see what changed; turn on *Model input* to see the aligned face the model receives.
 
+**Only real faces get a label.** Face detectors also fire on pets, cartoons, emoji and posters, so every candidate is checked three times: the MediaPipe detector, MediaPipe's 478-point landmark model, and a small face gate CNN trained on 16k animal, 10k cartoon and 3k emoji faces. Photos and videos are also scanned in tiles at two scales to find small, far-away faces. On a mixed test scene, 58 of 60 real faces were found (all 13 tiny 60 px ones) and no emoji was accepted. When the model is not confident (below 40%) or the head is turned too far, the label says *unsure* instead of guessing.
+
+![Face gate examples](assets/v1/gate_examples.png)
+
+*Top row: human faces. Below: animals, cartoons and emoji it learned to reject (99.5% of human faces kept, 0.7% of animals and no cartoons or emoji wrongly kept on validation).*
+
 <details>
 <summary>Python app (Gradio, eD0.x models)</summary>
 
@@ -105,6 +115,7 @@ Each step is one script that prints its results and saves a chart.
 | 12. Dataset v1 | [`prepare_v1.py`](scripts/prepare_v1.py) | FER+ soft labels + RAF-DB: 36,960 training images. |
 | 13. Teachers + `eDv1.0` | [`train_v1.py`](scripts/train_v1.py) | Two teachers, then `eDv1.0` distilled from them, all with webcam-style [augmentation](src/augment.py) ([curves](assets/eDv1.0/training_curves.png)). |
 | 14. Benchmark + web | [`benchmark.py`](scripts/benchmark.py), [`export_web.py`](scripts/export_web.py) | All models on FER+, RAF-DB and a simulated webcam; export to ONNX, checked against PyTorch. |
+| 15. Face gate | [`prepare_gate.py`](scripts/prepare_gate.py), [`train_gate.py`](scripts/train_gate.py) | Animal, cartoon and emoji faces go through the same detector and alignment as the human ones; a small CNN learns to reject them ([examples](assets/v1/gate_examples.png)). |
 
 Where the original labels move under FER+. Most *fear* and *sad* faces are actually *neutral*:
 
@@ -135,6 +146,10 @@ python scripts/train_v1.py --name _teachers/T2 --arch vgg --epochs 40
 python scripts/train_v1.py --name eDv1.0 --arch resnet --epochs 60 --teachers _teachers/T1,_teachers/T2,eD0.7
 python scripts/benchmark.py
 python scripts/export_web.py
+
+# Face gate: non-human faces in data/negatives/{afhq,cartoon,emoji}, keypoints from tools/landmarks.html
+python scripts/prepare_gate.py
+python scripts/train_gate.py
 ```
 
 Every model is saved in its own folder, `models/<version>/` (weights, config, logs, test report), with its charts in `assets/<version>/`.
